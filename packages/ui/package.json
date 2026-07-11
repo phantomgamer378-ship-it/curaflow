@@ -1,0 +1,23 @@
+{
+  "name": "@clinic/ui",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  },
+  "devDependencies": {
+    "@clinic/config": "workspace:*",
+    "@types/react": "19.0.3",
+    "react": "19.0.0",
+    "typescript": "5.6.3"
+  }
+}

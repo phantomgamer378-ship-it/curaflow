@@ -1,0 +1,1000 @@
+[
+  {
+    "id": "TC001",
+    "title": "Patient books an appointment successfully",
+    "description": "An authenticated patient can complete the booking flow and receive confirmation that the appointment was created.",
+    "category": "Patient Live Queue Monitoring",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for a patient user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the appointment booking page"
+      },
+      {
+        "type": "action",
+        "description": "Select a specialty"
+      },
+      {
+        "type": "action",
+        "description": "Select a doctor"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid date into the date field"
+      },
+      {
+        "type": "action",
+        "description": "Select an available time slot"
+      },
+      {
+        "type": "action",
+        "description": "Submit the booking form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a booking confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new appointment is shown in the patient's upcoming appointments context"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Log in as a patient and reach the patient dashboard",
+    "description": "This verifies that a returning patient can sign in with valid credentials and is routed to the patient dashboard.",
+    "category": "User Login",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the patient dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Log in as a doctor and reach the doctor dashboard",
+    "description": "This verifies that a returning doctor can sign in with valid credentials and is routed to the doctor dashboard.",
+    "category": "User Login",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the doctor dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Doctor completes the full queue status flow",
+    "description": "A doctor can mark a patient arrived, start the consultation, and complete the visit in sequence.",
+    "category": "Doctor Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for a doctor user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the queue management page"
+      },
+      {
+        "type": "action",
+        "description": "Mark a patient as arrived"
+      },
+      {
+        "type": "action",
+        "description": "Start the consultation for that patient"
+      },
+      {
+        "type": "action",
+        "description": "Mark the patient as completed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the patient's status is shown as completed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated queue state is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Log in as an admin and reach the admin dashboard",
+    "description": "This verifies that a returning admin can sign in with valid credentials and is routed to the admin dashboard.",
+    "category": "User Login",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the admin dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Register a new patient and reach the patient dashboard",
+    "description": "This verifies that a new patient can create an account and is routed to the patient dashboard after registration.",
+    "category": "User Registration",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /register"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the name field with a new patient name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with a unique email address"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with a valid password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the patient dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Patient logs in and opens the live queue view",
+    "description": "An authenticated patient can log in and reach the live queue screen where their current queue position and wait-time context are shown.",
+    "category": "Patient Live Queue Monitoring",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for a patient user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the live queue view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live queue screen is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the current wait-time and queue position are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Book an appointment as a patient",
+    "description": "This verifies that a logged-in patient can complete the booking flow by choosing a specialty, doctor, date, and available time slot and successfully create an appointment.",
+    "category": "Patient Book Appointment",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to book a new appointment"
+      },
+      {
+        "type": "action",
+        "description": "Select a specialty"
+      },
+      {
+        "type": "action",
+        "description": "Select a doctor"
+      },
+      {
+        "type": "action",
+        "description": "Pick a valid date"
+      },
+      {
+        "type": "action",
+        "description": "Select an available time slot"
+      },
+      {
+        "type": "action",
+        "description": "Submit the booking form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a booking confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new appointment is displayed in the patient experience"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Doctor logs in and opens the queue list",
+    "description": "An authenticated doctor can log in and reach today’s queue list with patient entries available for management.",
+    "category": "Doctor Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for a doctor user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the queue management page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the doctor queue list is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify patient entries in today's queue are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Monitor live queue status and wait time",
+    "description": "This verifies that a patient can open live queue monitoring and see the current queue position and estimated wait time.",
+    "category": "Patient Book Appointment",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open live queue monitoring"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live queue snapshot is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the estimated wait time is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Reach the doctor queue and update a patient's status through the visit",
+    "description": "This verifies that a doctor can open the queue, mark a patient arrived, start the consultation, complete the visit, and save notes.",
+    "category": "Doctor Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the doctor queue"
+      },
+      {
+        "type": "action",
+        "description": "Mark a patient as arrived"
+      },
+      {
+        "type": "action",
+        "description": "Start the consultation for that patient"
+      },
+      {
+        "type": "action",
+        "description": "Complete the visit for that patient"
+      },
+      {
+        "type": "action",
+        "description": "Add consultation notes"
+      },
+      {
+        "type": "action",
+        "description": "Save the consultation notes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the patient visit reflects the completed status"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the consultation notes are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Admin logs in and opens the analytics dashboard",
+    "description": "An authenticated admin can log in and view the operational analytics dashboard with global queue metrics.",
+    "category": "Admin Insights & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for an admin user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the admin dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the analytics dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify global queue metrics are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Review admin analytics and global queue monitor",
+    "description": "This verifies that an admin can open analytics and queue monitoring and see the platform’s operational summaries.",
+    "category": "Admin Analytics Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the admin dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open global queue monitoring"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the analytics dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the global queue metrics are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Patient sees live queue progress update",
+    "description": "A patient viewing the live queue can observe that queue progress updates change their displayed position or wait-time context.",
+    "category": "Patient Live Queue Monitoring",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for a patient user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the live queue view"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the live queue status to refresh"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the queue position or wait-time display updates"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live queue screen remains displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "See a booked appointment in patient history",
+    "description": "This verifies that after booking an appointment, the patient can open appointment history and see the new appointment reflected there.",
+    "category": "Patient Book Appointment",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to view appointment history"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the appointment history is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the newly booked appointment is listed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Admin reviews operational insights and queue monitoring",
+    "description": "An admin can move between the main dashboard and queue monitoring view to review system-wide operations.",
+    "category": "Admin Insights & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for an admin user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the admin dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the queue monitoring page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the global queue monitoring view is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify queue metrics remain visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Patient booking appears in appointment history",
+    "description": "After booking an appointment, a patient can open appointment history and see the newly created visit listed there.",
+    "category": "Patient Live Queue Monitoring",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for a patient user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the appointment booking page"
+      },
+      {
+        "type": "action",
+        "description": "Select a specialty"
+      },
+      {
+        "type": "action",
+        "description": "Select a doctor"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid date into the date field"
+      },
+      {
+        "type": "action",
+        "description": "Select an available time slot"
+      },
+      {
+        "type": "action",
+        "description": "Submit the booking form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open appointment history"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the newly created appointment is listed in history"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the appointment history view is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Review doctor appointments and add consultation notes",
+    "description": "This verifies that a doctor can open their appointments page, view scheduled appointments, and record notes for a visit.",
+    "category": "Doctor Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to view doctor appointments"
+      },
+      {
+        "type": "action",
+        "description": "Open an appointment"
+      },
+      {
+        "type": "action",
+        "description": "Add consultation notes"
+      },
+      {
+        "type": "action",
+        "description": "Save the consultation notes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the appointment details are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the consultation notes are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Doctor adds consultation notes for a patient",
+    "description": "A doctor can record consultation notes from the queue management experience and see them associated with the patient.",
+    "category": "Doctor Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for a doctor user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the queue management page"
+      },
+      {
+        "type": "action",
+        "description": "Select a patient from the queue"
+      },
+      {
+        "type": "action",
+        "description": "Add consultation notes"
+      },
+      {
+        "type": "action",
+        "description": "Save the consultation notes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the consultation notes are displayed for the patient"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the patient record remains visible in the queue context"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "Admin opens the doctor management page",
+    "description": "An authenticated admin can reach the doctor management page from the admin area and view the doctor list.",
+    "category": "Admin Insights & Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for an admin user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the doctor management page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the doctor management view is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the list of doctors is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Manage doctors from the admin doctors page",
+    "description": "This verifies that an admin can open the doctors management page and see the doctor list available for administration.",
+    "category": "Admin Manage Doctors",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to manage doctors"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the doctors management page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the doctor list is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Block unauthorized access to patient pages",
+    "description": "This verifies that a user who is not signed in cannot access patient-protected pages and is redirected to sign in.",
+    "category": "User Login",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /patient"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is redirected away from the patient page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the login page is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC023",
+    "title": "Reject invalid login credentials",
+    "description": "This verifies that entering invalid credentials prevents sign-in and shows an error message.",
+    "category": "User Login",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with invalid@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with an incorrect password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a login error message is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC024",
+    "title": "Patient sees validation when booking details are incomplete",
+    "description": "A patient who tries to submit an incomplete booking sees validation feedback and no appointment is created.",
+    "category": "Patient Live Queue Monitoring",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for a patient user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the appointment booking page"
+      },
+      {
+        "type": "action",
+        "description": "Submit the booking form without completing required details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify booking validation feedback is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new appointment confirmation is shown"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC025",
+    "title": "Prevent booking when required selections are incomplete",
+    "description": "This verifies that the patient booking form requires the necessary selections before an appointment can be created.",
+    "category": "Patient Book Appointment",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to book a new appointment"
+      },
+      {
+        "type": "action",
+        "description": "Submit the booking form without completing all required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify booking validation errors are visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC026",
+    "title": "Doctor sees the queue in an empty state",
+    "description": "When the doctor queue has no active patients, the queue view shows an empty state instead of a patient list.",
+    "category": "Doctor Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the login credentials for a doctor user"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the queue management page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty queue message is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no patient entries are displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]

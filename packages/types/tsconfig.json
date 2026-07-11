@@ -1,0 +1,9 @@
+{
+  "extends": "@clinic/config/tsconfig/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "noEmit": false,
+    "declaration": true
+  },
+  "include": ["src/**/*.ts"]
+}

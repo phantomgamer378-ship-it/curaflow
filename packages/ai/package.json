@@ -1,0 +1,31 @@
+{
+  "name": "@clinic/ai",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@clinic/auth": "workspace:*",
+    "@clinic/db": "workspace:*",
+    "@clinic/observability": "workspace:*",
+    "@clinic/queue": "workspace:*",
+    "@clinic/types": "workspace:*",
+    "@langchain/core": "^0.3.0",
+    "@langchain/langgraph": "^0.2.0",
+    "@langchain/openai": "^0.3.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@clinic/config": "workspace:*",
+    "@types/node": "22.10.2",
+    "typescript": "5.6.3",
+    "vitest": "^2.0.0"
+  }
+}

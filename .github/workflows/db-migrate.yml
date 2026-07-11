@@ -1,0 +1,11 @@
+name: Database migration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  phase-8-placeholder:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - run: echo "Staging-first Supabase migration automation is configured in Phase 8."

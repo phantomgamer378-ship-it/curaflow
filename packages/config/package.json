@@ -1,0 +1,20 @@
+{
+  "name": "@clinic/config",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./env": "./src/env.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3"
+  }
+}

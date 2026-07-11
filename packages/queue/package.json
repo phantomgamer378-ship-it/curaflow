@@ -1,0 +1,21 @@
+{
+  "name": "@clinic/queue",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@clinic/config": "workspace:*",
+    "@clinic/types": "workspace:*",
+    "typescript": "5.6.3"
+  },
+  "dependencies": {
+    "@clinic/db": "workspace:*"
+  }
+}

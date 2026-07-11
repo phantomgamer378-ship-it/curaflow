@@ -1,0 +1,137 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js (App Router)
+  - TailwindCSS
+  - Radix UI
+  - React
+routes:
+  - path: /login
+    file: apps/web/src/app/login/page.tsx
+    auth_required: false
+    description: User login page
+  - path: /register
+    file: apps/web/src/app/register/page.tsx
+    auth_required: false
+    description: User registration page
+  - path: /patient
+    file: apps/web/src/app/patient/page.tsx
+    auth_required: true
+    description: Patient dashboard showing upcoming appointments and queue status
+  - path: /patient/book
+    file: apps/web/src/app/patient/book/page.tsx
+    auth_required: true
+    description: Book a new appointment
+  - path: /patient/appointments
+    file: apps/web/src/app/patient/appointments/page.tsx
+    auth_required: true
+    description: Patient appointment history and details
+  - path: /patient/live-queue
+    file: apps/web/src/app/patient/live-queue/page.tsx
+    auth_required: true
+    description: Patient live queue monitoring and wait time estimator
+  - path: /doctor
+    file: apps/web/src/app/doctor/page.tsx
+    auth_required: true
+    description: Doctor dashboard
+  - path: /doctor/queue
+    file: apps/web/src/app/doctor/queue/page.tsx
+    auth_required: true
+    description: Doctor live queue management
+  - path: /doctor/appointments
+    file: apps/web/src/app/doctor/appointments/page.tsx
+    auth_required: true
+    description: Doctor appointment management and consultation notes
+  - path: /admin
+    file: apps/web/src/app/admin/page.tsx
+    auth_required: true
+    description: Admin dashboard and AI insights
+  - path: /admin/doctors
+    file: apps/web/src/app/admin/doctors/page.tsx
+    auth_required: true
+    description: Admin manage doctors
+  - path: /admin/queue-monitor
+    file: apps/web/src/app/admin/queue-monitor/page.tsx
+    auth_required: true
+    description: Admin global queue monitoring
+features:
+  - name: User Login
+    description: Login with email and password credentials
+    files:
+      - apps/web/src/app/login/page.tsx
+    entry_route: /login
+    user_interactions:
+      - Fill email input field
+      - Fill password input field
+      - Click Login button to submit
+      - See error message on invalid credentials or redirect on success
+    api_calls:
+      - method: POST
+        endpoint: /api/auth/login
+    auth_required: false
+  - name: User Registration
+    description: Register as a new patient
+    files:
+      - apps/web/src/app/register/page.tsx
+    entry_route: /register
+    user_interactions:
+      - Fill name, email, and password
+      - Click Register button
+      - Redirect to patient dashboard on success
+    api_calls:
+      - method: POST
+        endpoint: /api/auth/register
+    auth_required: false
+  - name: Patient Book Appointment
+    description: Patient selects a doctor, date, and slot to book an appointment
+    files:
+      - apps/web/src/app/patient/book/page.tsx
+    entry_route: /patient/book
+    user_interactions:
+      - Select specialty and doctor
+      - Pick a date on the calendar
+      - Select an available time slot
+      - Submit booking
+    api_calls:
+      - method: POST
+        endpoint: /api/appointments
+    auth_required: true
+  - name: Doctor Queue Management
+    description: Doctor calls patients and manages the current queue
+    files:
+      - apps/web/src/app/doctor/queue/page.tsx
+    entry_route: /doctor/queue
+    user_interactions:
+      - View list of today's patients in queue
+      - Click 'Mark Arrived', 'In Progress', 'Completed'
+      - Add consultation notes via AI Assistant panel
+    api_calls:
+      - method: PUT
+        endpoint: /api/queue/:id
+    auth_required: true
+  - name: Live Queue Monitor
+    description: Patient views real-time wait time and queue status
+    files:
+      - apps/web/src/app/patient/live-queue/page.tsx
+    entry_route: /patient/live-queue
+    user_interactions:
+      - View estimated wait time
+      - See position in queue
+    api_calls:
+      - method: GET
+        endpoint: /api/queue/snapshot
+    auth_required: true
+  - name: Admin Insights & Management
+    description: Admin manages doctors and views operations analytics
+    files:
+      - apps/web/src/app/admin/page.tsx
+    entry_route: /admin
+    user_interactions:
+      - View analytics charts for appointments
+      - View global queue metrics
+    api_calls:
+      - method: GET
+        endpoint: /api/ai/assistant/admin-insights
+    auth_required: true
+known_limitations: []
