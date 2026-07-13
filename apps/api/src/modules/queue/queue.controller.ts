@@ -10,7 +10,7 @@ import {
   joinQueue,
 } from "@clinic/queue";
 import { broadcastQueueUpdate } from "../../config/socket";
-import { aiQueue } from "../../config/queue";
+import { aiQueue, queueQueue, notificationQueue } from "../../config/queue";
 
 export async function getQueueStatus(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -55,6 +55,15 @@ export async function startConsult(req: AuthenticatedRequest, res: Response, nex
 
     const snapshot = await getLiveQueueSnapshot(appointment.clinicId);
     broadcastQueueUpdate(appointment.clinicId, snapshot);
+
+    await notificationQueue.add("being_called", {
+      appointmentId: appointment.id,
+    });
+
+    await queueQueue.add("recalc-and-notify", {
+      doctorId: appointment.doctorId,
+      clinicId: appointment.clinicId,
+    });
 
     return res.json({ ok: true, data: snapshot });
   } catch (error) {
@@ -106,6 +115,11 @@ export async function completeConsult(req: AuthenticatedRequest, res: Response, 
     // Broadcast queue update instantly to all screens (TVs, patients)
     broadcastQueueUpdate(appointment.clinicId, snapshot);
 
+    await queueQueue.add("recalc-and-notify", {
+      doctorId: appointment.doctorId,
+      clinicId: appointment.clinicId,
+    });
+
     // Queue background job for AI summarization & health recommendations
     if (notes || diagnosis) {
       await aiQueue.add("process-consultation-ai", {
@@ -148,6 +162,11 @@ export async function markConsultNoShow(req: AuthenticatedRequest, res: Response
     });
 
     broadcastQueueUpdate(appointment.clinicId, snapshot);
+
+    await queueQueue.add("recalc-and-notify", {
+      doctorId: appointment.doctorId,
+      clinicId: appointment.clinicId,
+    });
 
     return res.json({ ok: true, data: snapshot });
   } catch (error) {
@@ -230,6 +249,11 @@ export async function skipConsult(req: AuthenticatedRequest, res: Response, next
     // Broadcast queue update instantly to all screens (TVs, patients)
     broadcastQueueUpdate(appointment.clinicId, snapshot);
 
+    await queueQueue.add("recalc-and-notify", {
+      doctorId: doctor.id,
+      clinicId: appointment.clinicId,
+    });
+
     // Queue notification that the patient has been skipped
     const { notificationQueue } = await import("../../config/queue");
     const patientProfile = await prisma.patient.findUnique({
@@ -280,6 +304,12 @@ export async function removeQueueEntry(req: AuthenticatedRequest, res: Response,
     });
 
     broadcastQueueUpdate(appointment.clinicId, snapshot);
+
+    const { queueQueue: qQueue } = await import("../../config/queue");
+    await qQueue.add("recalc-and-notify", {
+      doctorId: doctor.id,
+      clinicId: appointment.clinicId,
+    });
 
     return res.json({ ok: true, data: snapshot });
   } catch (error) {

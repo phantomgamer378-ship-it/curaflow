@@ -12,6 +12,8 @@ import {
   adminAddQueueEntry,
   adminEditQueueEntry,
   adminDeleteQueueEntry,
+  getClinics,
+  updateClinic,
 } from "./admin.controller";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
@@ -54,6 +56,13 @@ router.post(
   validate(clinicHolidayInputSchema),
   auditLog("ADD_CLINIC_HOLIDAY", "ClinicHoliday"),
   addHoliday
+);
+
+router.get("/clinics", getClinics);
+router.patch(
+  "/clinics/:id",
+  auditLog("UPDATE_CLINIC", "Clinic"),
+  updateClinic
 );
 
 router.post(

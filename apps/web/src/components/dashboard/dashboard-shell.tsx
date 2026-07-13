@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Brand } from "@/components/layout/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TelegramHeader } from "@/components/ui/telegram-header";
 import Cookies from "js-cookie";
 import { apiFetch } from "@/lib/api";
 
@@ -161,7 +162,17 @@ export function DashboardShell({
           <span className="dashboard-context">{workspace}</span>
           <button className="icon-button" aria-label="Notifications"><Bell size={18} /></button>
           <ThemeToggleInline />
-          <span className="topbar-avatar">{userInitials}</span>
+          <TelegramHeader 
+            avatar=""
+            name={userInitials}
+            phone="+1 234 567 8900"
+            username="@user"
+            actionButton={{
+              text: "Profile",
+              onClick: () => window.location.href = `/${role}/settings`,
+              backgroundColor: "var(--brand)"
+            }}
+          />
         </header>
         {children}
       </div>

@@ -29,6 +29,19 @@ async function main() {
   const { aiWorker } = await import("./workers/ai-worker");
   const { queueWorker } = await import("./workers/queue-worker");
 
+  const { queueQueue } = await import("./lib/queue-setup");
+  const qQueue = queueQueue.get();
+
+  // Register the 24h reminder cron job (runs every hour)
+  await qQueue.add(
+    "send-24h-reminders",
+    {},
+    {
+      repeat: { pattern: "0 * * * *" },
+      jobId: "send-24h-reminders-job"
+    }
+  );
+
   logger.info("All workers started successfully.");
 
   process.on("SIGINT", async () => {

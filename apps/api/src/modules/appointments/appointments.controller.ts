@@ -243,7 +243,7 @@ export async function bookAppointment(req: AuthenticatedRequest, res: Response, 
     }
 
     // Queue reminder and confirmation notifications
-    await notificationQueue.add("send-booking-confirmation", {
+    await notificationQueue.add("appointment_created", {
       appointmentId: appointment.id,
       patientId: patient.id,
       email: req.user?.email,

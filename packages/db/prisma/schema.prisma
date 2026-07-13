@@ -29,9 +29,10 @@ model Profile {
 model Clinic {
   id           String          @id @default(uuid())
   name         String
-  openTime     String          @default("09:00")
-  closeTime    String          @default("17:00")
-  createdAt    DateTime        @default(now())
+  openTime              String          @default("09:00")
+  closeTime             String          @default("17:00")
+  gettingCloseThreshold Int             @default(3)
+  createdAt             DateTime        @default(now())
   
   doctors      Doctor[]
   holidays     ClinicHoliday[]

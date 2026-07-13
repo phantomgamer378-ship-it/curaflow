@@ -156,7 +156,7 @@ export function ArcRevealHero({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
             className={cn(
-              "absolute inset-x-0 top-0 z-30 h-screen overflow-hidden bg-[var(--reveal-overlay)]",
+              "fixed inset-0 z-50 h-[100dvh] overflow-hidden bg-white",
               introClassName,
             )}
           >
@@ -172,7 +172,7 @@ export function ArcRevealHero({
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
                     className={cn(
-                      "select-none px-6 text-center text-5xl font-semibold tracking-tight text-[var(--canvas)] sm:text-6xl md:text-7xl",
+                      "select-none px-6 text-center text-5xl font-semibold tracking-tight text-black sm:text-6xl md:text-7xl",
                       greetingClassName,
                     )}
                   >

@@ -113,16 +113,16 @@ export function AuthPage({ mode, redirectTo = "/patient", resetToken = "" }: Aut
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/google", {
+      const { apiFetch } = await import("@/lib/api");
+      const res = await apiFetch("/api/auth/google", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ next: redirectTo }),
       });
-      const data = await res.json();
-      if (data.ok && data.data?.url) {
-        window.location.href = data.data.url;
+      
+      if (res.ok && res.data?.url) {
+        window.location.href = res.data.url;
       } else {
-        setError(data.error || "Google login failed");
+        setError(res.error || "Google login failed");
         setIsLoading(false);
       }
     } catch (err) {

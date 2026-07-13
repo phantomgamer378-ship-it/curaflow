@@ -20,16 +20,57 @@
 
 /* ── Dark mode ──────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --ink: #e8ede9;
-  --muted: #8fa49f;
+  --ink: #ffffff;
+  --muted: #a1a1aa;
   --brand: #4ec9b0;
   --brand-dark: #3aad99;
-  --mint: #1a3530;
-  --canvas: #0f1a18;
-  --line: #1e2e2a;
-  --white: #111c1a;
-  --cream: #0d1614;
-  --reveal-overlay: #0b0620;
+  --mint: #061c16;
+  --canvas: #000000;
+  --line: #27272a;
+  --white: #09090b;
+  --cream: #18181b;
+  --reveal-overlay: #000000;
+}
+
+[data-theme="dark"] .hero-section {
+  background:
+    radial-gradient(circle at 77% 32%, rgba(78, 201, 176, .15), transparent 30%),
+    linear-gradient(136deg, #000000 0%, #050505 55%, #000000 100%);
+}
+
+[data-theme="dark"] .site-header {
+  background: rgba(0, 0, 0, 0.88);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .appointment-card,
+[data-theme="dark"] .floating-note,
+[data-theme="dark"] .mobile-menu nav {
+  background: rgba(15, 15, 18, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .queue-panel,
+[data-theme="dark"] .icon-button {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .queue-divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .orb-one {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .orb-two {
+  background: rgba(78, 201, 176, 0.1);
+}
+
+[data-theme="dark"] .progress-track {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="dark"] body {
@@ -642,6 +683,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .stat-icon.green { background: #1a3530; }
   .stat-icon.sand { background: #2a2018; color: #d4a445; }
   .stat-icon.blue { background: #12242e; color: #60a5c4; }
+
+
+
   .dashboard-panel { background: #111c1a; border-color: var(--line); }
   .panel-heading { border-color: var(--line); }
   .now-serving { background: #1a3530; }
@@ -681,4 +725,27 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 @media (max-width: 520px) {
   .auth-aside-stats { display: none; }
+}
+
+/* ── View Transitions API (Dark Mode Toggle) ───────────────────────── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* Light to Dark: New Dark snapshot expands on top */
+[data-theme="dark"]::view-transition-old(root) {
+  z-index: 1;
+}
+[data-theme="dark"]::view-transition-new(root) {
+  z-index: 2;
+}
+
+/* Dark to Light: Old Dark snapshot shrinks on top */
+[data-theme="light"]::view-transition-old(root) {
+  z-index: 2;
+}
+[data-theme="light"]::view-transition-new(root) {
+  z-index: 1;
 }

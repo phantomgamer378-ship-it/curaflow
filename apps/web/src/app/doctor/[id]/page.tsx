@@ -11,6 +11,7 @@ import {
   ChevronRight,
   User
 } from "lucide-react";
+import { TelegramHeader } from "@/components/ui/telegram-header";
 import Link from "next/link";
 import { Brand } from "@/components/layout/brand";
 
@@ -80,16 +81,18 @@ export default async function PublicDoctorProfilePage({ params }: { params: Prom
           boxShadow: "0 4px 20px rgba(0,0,0,0.03)", marginBottom: "32px"
         }}>
           {/* Avatar */}
-          <div style={{ 
-            width: "140px", height: "140px", borderRadius: "50%", background: "var(--mint)", 
-            border: "4px solid white", boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-            display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0
-          }}>
-            {doctor.profile?.avatarUrl ? (
-              <img src={doctor.profile.avatarUrl} alt={doctor.profile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <Stethoscope size={64} color="var(--brand)" opacity={0.5} />
-            )}
+          <div style={{ position: "relative", zIndex: 10 }}>
+            <TelegramHeader 
+              avatar={doctor.profile?.avatarUrl || ""}
+              name={`Dr. ${doctor.profile?.name}`}
+              phone={doctor.profile?.phone || "N/A"}
+              username={doctor.profile?.specialty || "Specialist"}
+              actionButton={{
+                text: "Message",
+                onClick: () => window.alert("Messaging integration coming soon!"),
+                backgroundColor: "var(--brand)"
+              }}
+            />
           </div>
           
           {/* Info */}

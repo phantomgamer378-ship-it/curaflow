@@ -123,6 +123,149 @@ export const queueWorker = createWorker<any>(
         }
       }
       await redisPublisher.quit();
+    } else if (job.name === "recalc-and-notify") {
+      const { doctorId, clinicId } = job.data;
+      if (!doctorId || !clinicId) return;
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayDate = new Date(todayStr);
+
+      const session = await prisma.queueSession.findFirst({
+        where: { doctorId, sessionDate: todayDate }
+      });
+      if (!session) return;
+
+      const clinic = await prisma.clinic.findUnique({ where: { id: clinicId } });
+      if (!clinic) return;
+
+      const threshold = clinic.gettingCloseThreshold;
+
+      const waitingEntries = await prisma.queueEntry.findMany({
+        where: { sessionId: session.id, status: "waiting" },
+        orderBy: { position: "asc" }
+      });
+
+      const existingEvents = await prisma.queueEvent.findMany({
+        where: {
+          sessionId: session.id,
+          type: { in: ["NOTIFY_GETTING_CLOSE", "NOTIFY_NEXT"] }
+        }
+      });
+
+      const { notificationQueue } = await import("../../lib/queue-setup");
+
+      for (const entry of waitingEntries) {
+        const patientsAhead = waitingEntries.filter(e => e.position < entry.position).length;
+
+        const hasGettingClose = existingEvents.some(
+          ev => ev.type === "NOTIFY_GETTING_CLOSE" && JSON.parse(ev.payload).appointmentId === entry.appointmentId
+        );
+        const hasNext = existingEvents.some(
+          ev => ev.type === "NOTIFY_NEXT" && JSON.parse(ev.payload).appointmentId === entry.appointmentId
+        );
+
+        if (patientsAhead <= threshold && !hasGettingClose) {
+          await prisma.queueEvent.create({
+            data: {
+              sessionId: session.id,
+              type: "NOTIFY_GETTING_CLOSE",
+              payload: JSON.stringify({ appointmentId: entry.appointmentId })
+            }
+          });
+          await notificationQueue.add("getting_close", {
+            appointmentId: entry.appointmentId,
+            patientsAhead
+          });
+        }
+
+        if (patientsAhead === 0 && !hasNext) {
+          await prisma.queueEvent.create({
+            data: {
+              sessionId: session.id,
+              type: "NOTIFY_NEXT",
+              payload: JSON.stringify({ appointmentId: entry.appointmentId })
+            }
+          });
+          await notificationQueue.add("you_are_next", {
+            appointmentId: entry.appointmentId
+          });
+        }
+      }
+    } else if (job.name === "send-24h-reminders") {
+      const now = new Date();
+      const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const in25h = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+
+      // Find appointments between 24h and 25h from now that haven't had a 24h reminder
+      const appointments = await prisma.appointment.findMany({
+        where: {
+          slotTime: {
+            gte: in24h,
+            lt: in25h
+          },
+          status: "booked"
+        },
+        include: {
+          patient: { include: { profile: true } }
+        }
+      });
+
+      const { notificationQueue } = await import("../../lib/queue-setup");
+
+      for (const appt of appointments) {
+        // Check if we've already sent a reminder (we can use an audit log or a simple check)
+        const existingNotification = await prisma.notification.findFirst({
+          where: {
+            userId: appt.patient.profileId,
+            payload: { contains: appt.id },
+            // A bit of a hack without JSON querying, but works for the payload shape
+          }
+        });
+
+        // Better check: We check if the notification payload contains the jobName
+        const alreadySent = await prisma.notification.findFirst({
+          where: {
+            userId: appt.patient.profileId,
+            payload: {
+              contains: `"jobName":"24h_reminder"`
+            }
+          }
+        });
+
+        // To make it strict to the appointment:
+        const sentForThisAppt = await prisma.notification.findFirst({
+          where: {
+            userId: appt.patient.profileId,
+            payload: {
+              contains: appt.id
+            }
+          }
+        });
+
+        // A robust way since SQLite doesn't do deep JSON querying easily:
+        // We'll just dispatch it; the notification worker will create the record.
+        // Wait, to prevent duplicates if the cron runs every 15m, we need a lock.
+        // Let's use AuditLog to record it.
+        const auditLog = await prisma.auditLog.findFirst({
+          where: {
+            action: "NOTIFY_24H_REMINDER",
+            resourceId: appt.id
+          }
+        });
+
+        if (!auditLog && appt.patient.profile?.email) {
+          await prisma.auditLog.create({
+            data: {
+              action: "NOTIFY_24H_REMINDER",
+              resourceType: "appointment",
+              resourceId: appt.id
+            }
+          });
+          await notificationQueue.add("24h_reminder", {
+            appointmentId: appt.id
+          });
+        }
+      }
     }
   },
   {

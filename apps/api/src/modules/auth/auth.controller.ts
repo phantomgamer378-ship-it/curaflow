@@ -311,3 +311,102 @@ export async function changePassword(req: AuthenticatedRequest, res: Response, n
     next(error);
   }
 }
+
+export async function googleLogin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { next: redirectTo } = req.body;
+    
+    // In a real implementation, we would construct the Google OAuth URL using google-auth-library
+    // Since we don't have real credentials, we'll simulate the OAuth flow by redirecting to our own callback
+    const callbackUrl = `http://localhost:4000/api/auth/google/callback?state=${encodeURIComponent(redirectTo || '/patient')}`;
+    
+    // Simulate external redirect
+    return res.status(200).json({
+      ok: true,
+      data: {
+        url: callbackUrl
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function googleCallback(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { state } = req.query;
+    const redirectTo = state ? decodeURIComponent(state as string) : '/patient';
+    
+    // Mock user data from "Google"
+    const mockGoogleUser = {
+      email: "demo.google@example.com",
+      name: "Google Demo User",
+      role: "patient",
+    };
+
+    let profile = await prisma.profile.findUnique({ where: { email: mockGoogleUser.email } });
+    
+    if (!profile) {
+      // Create user if doesn't exist
+      profile = await prisma.$transaction(async (tx) => {
+        const newProfile = await tx.profile.create({
+          data: {
+            email: mockGoogleUser.email,
+            passwordHash: bcrypt.hashSync("google_oauth_dummy_password", 10),
+            name: mockGoogleUser.name,
+            role: "patient",
+            phone: "",
+          },
+        });
+
+        await tx.patient.create({
+          data: {
+            profileId: newProfile.id,
+          },
+        });
+
+        return newProfile;
+      });
+    }
+
+    const secret = process.env.JWT_SECRET || "fallback_default_jwt_secret_key_change_me_in_prod";
+    const token = jwt.sign(
+      {
+        sub: profile.id,
+        email: profile.email,
+        role: profile.role,
+        name: profile.name,
+      },
+      secret,
+      { expiresIn: "7d" }
+    );
+
+    // Redirect back to the frontend with the token in the URL hash or query, or set a cookie.
+    // For a seamless cross-domain auth, we should redirect to a frontend page that reads the token and sets it.
+    // Since the frontend is at http://localhost:3000, we'll redirect to a generic page or directly set the cookie if on same domain.
+    
+    // For local dev, frontend is on 3000 and backend on 4000.
+    // Setting a cookie here might not work cross-port unless domain is explicitly handled.
+    // We can redirect to the frontend with the token in query params, and let the frontend save it.
+    
+    // BUT we don't have a frontend callback route.
+    // Let's redirect to a frontend helper or the login page with the token.
+    const frontendUrl = process.env.ALLOWED_ORIGINS?.split(',')[0] || "http://localhost:3000";
+    
+    // The easiest way is to redirect to /login with a magic query param, or create a quick html page that sets the cookie and redirects.
+    res.send(`
+      <html>
+        <body>
+          <p>Logging you in...</p>
+          <script>
+            // Set cookie for Next.js frontend
+            document.cookie = "authToken=${token}; path=/; max-age=${7 * 24 * 60 * 60}";
+            window.location.href = "${frontendUrl}${redirectTo}";
+          </script>
+        </body>
+      </html>
+    `);
+  } catch (error) {
+    next(error);
+  }
+}

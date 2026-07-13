@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useRef } from "react";
+import VariableProximity from "./VariableProximity";
+import TextType from "./TextType";
 import {
   ArrowRight,
   BellRing,
@@ -54,6 +59,8 @@ const trustBadges = [
 ];
 
 export function HomePage() {
+  const containerRef = useRef<HTMLHeadingElement>(null);
+
   return (
     <main>
       {/* ── HERO ─────────────────────────────────────────────── */}
@@ -65,8 +72,26 @@ export function HomePage() {
               <span><HeartPulse size={14} /></span>
               Live · Clinic Queue
             </div>
-            <h1>
-              Care,<br /><em>right on time.</em>
+            <h1 ref={containerRef} style={{ position: 'relative' }}>
+              <VariableProximity
+                label="Care,"
+                fromFontVariationSettings="'wght' 400, 'opsz' 9"
+                toFontVariationSettings="'wght' 1000, 'opsz' 40"
+                containerRef={containerRef}
+                radius={100}
+                falloff="linear"
+              />
+              <br />
+              <em style={{ fontStyle: "normal" }}>
+                <VariableProximity
+                  label="right on time."
+                  fromFontVariationSettings="'wght' 400, 'opsz' 9"
+                  toFontVariationSettings="'wght' 1000, 'opsz' 40"
+                  containerRef={containerRef}
+                  radius={100}
+                  falloff="linear"
+                />
+              </em>
             </h1>
             <p className="hero-lede">
               Skip the waiting room chaos. Book smarter, queue calmer, get seen faster — all from one place.
@@ -113,7 +138,15 @@ export function HomePage() {
           <div className="section-heading centered">
             <span className="eyebrow eyebrow-plain">A smoother care journey</span>
             <h2>
-              From booking to consultation,<br />we keep things simple.
+              <TextType
+                text={["From booking to consultation,\nwe keep things simple."]}
+                typingSpeed={40}
+                pauseDuration={2000}
+                showCursor={true}
+                cursorCharacter="|"
+                loop={false}
+                startOnVisible={true}
+              />
             </h2>
             <p>
               No confusing steps. No crowded waiting rooms. Just a calmer way to see your doctor.

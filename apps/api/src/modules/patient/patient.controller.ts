@@ -36,7 +36,7 @@ export async function updatePatientProfile(req: AuthenticatedRequest, res: Respo
     if (emergencyContactName !== undefined) patientUpdate.emergencyContactName = emergencyContactName;
     if (emergencyContactPhone !== undefined) patientUpdate.emergencyContactPhone = emergencyContactPhone;
 
-    let updatedPatient = patient;
+    let updatedPatient: any = patient;
     if (Object.keys(patientUpdate).length > 0) {
       updatedPatient = await prisma.patient.update({
         where: { id: patient.id },

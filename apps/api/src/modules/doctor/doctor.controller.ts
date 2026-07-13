@@ -264,7 +264,7 @@ export async function updateDoctorProfile(req: AuthenticatedRequest, res: Respon
     if (consultationFee !== undefined) doctorUpdate.consultationFee = typeof consultationFee === 'number' ? consultationFee : parseInt(consultationFee, 10);
     if (specialty !== undefined) doctorUpdate.specialty = specialty;
 
-    let updatedDoctor = doctor;
+    let updatedDoctor: any = doctor;
     if (Object.keys(doctorUpdate).length > 0) {
       updatedDoctor = await prisma.doctor.update({
         where: { id: doctor.id },

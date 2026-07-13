@@ -7,6 +7,7 @@ import React, {
   useState,
   useCallback,
 } from "react";
+import { flushSync } from "react-dom";
 
 type Theme = "light" | "dark";
 
@@ -57,9 +58,50 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, mounted]);
 
-  const toggle = useCallback(() => {
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
-  }, []);
+  const toggle = useCallback((e?: React.MouseEvent | MouseEvent) => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    
+    // Fallback if View Transitions API is not supported
+    // @ts-ignore - startViewTransition is standard but typescript might not have it in all versions
+    if (!document.startViewTransition || !e) {
+      setTheme(nextTheme);
+      return;
+    }
+    
+    const x = e.clientX ?? window.innerWidth / 2;
+    const y = e.clientY ?? window.innerHeight / 2;
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    // @ts-ignore
+    const transition = document.startViewTransition(() => {
+      flushSync(() => {
+        setTheme(nextTheme);
+      });
+    });
+
+    transition.ready.then(() => {
+      const clipPath = [
+        `circle(0px at ${x}px ${y}px)`,
+        `circle(${endRadius}px at ${x}px ${y}px)`,
+      ];
+      
+      const isDark = nextTheme === "dark";
+      
+      document.documentElement.animate(
+        {
+          clipPath: isDark ? clipPath : [...clipPath].reverse(),
+        },
+        {
+          duration: 600,
+          easing: "cubic-bezier(0.85, 0, 0.15, 1)",
+          pseudoElement: isDark ? "::view-transition-new(root)" : "::view-transition-old(root)",
+        }
+      );
+    });
+  }, [theme]);
 
   // Prevent flash: apply theme synchronously before first paint via inline script.
   // The inline script below is rendered server-side and runs before React hydrates.

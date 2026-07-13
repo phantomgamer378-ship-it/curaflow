@@ -57,6 +57,36 @@ export async function getPatients(req: Request, res: Response, next: NextFunctio
   }
 }
 
+export async function getClinics(req: Request, res: Response, next: NextFunction) {
+  try {
+    const clinics = await prisma.clinic.findMany();
+    return res.json({ ok: true, data: clinics });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateClinic(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const { name, openTime, closeTime, gettingCloseThreshold } = req.body;
+    
+    const clinic = await prisma.clinic.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(openTime !== undefined && { openTime }),
+        ...(closeTime !== undefined && { closeTime }),
+        ...(gettingCloseThreshold !== undefined && { gettingCloseThreshold }),
+      }
+    });
+    
+    return res.json({ ok: true, data: clinic });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getDoctors(req: Request, res: Response, next: NextFunction) {
   try {
     const limit = parseInt((req.query.limit as string) || "50", 10);
