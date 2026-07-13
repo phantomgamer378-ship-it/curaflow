@@ -25,10 +25,10 @@ export function auditLog(action: string, resourceType: string) {
             resourceType,
             resourceId: req.params.id || parsedBody?.data?.id || null,
             ip: (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || null,
-            metadata: {
+            metadata: JSON.stringify({
               body: req.body,
               query: req.query,
-            }
+            })
           }
         }).catch((err) => {
           console.error("Failed to write audit log:", err);

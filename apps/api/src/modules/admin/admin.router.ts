@@ -9,6 +9,9 @@ import {
   updateAvailability,
   addHoliday,
   addLeave,
+  adminAddQueueEntry,
+  adminEditQueueEntry,
+  adminDeleteQueueEntry,
 } from "./admin.controller";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
@@ -58,6 +61,25 @@ router.post(
   validate(doctorLeaveInputSchema),
   auditLog("ADD_DOCTOR_LEAVE", "DoctorLeave"),
   addLeave
+);
+
+// Admin Queue Management
+router.post(
+  "/queue/add",
+  auditLog("ADMIN_ADD_TO_QUEUE", "QueueEntry"),
+  adminAddQueueEntry
+);
+
+router.patch(
+  "/queue/:entryId",
+  auditLog("ADMIN_EDIT_QUEUE_ENTRY", "QueueEntry"),
+  adminEditQueueEntry
+);
+
+router.delete(
+  "/queue/:entryId",
+  auditLog("ADMIN_REMOVE_FROM_QUEUE", "QueueEntry"),
+  adminDeleteQueueEntry
 );
 
 export { router as adminRouter };

@@ -17,6 +17,7 @@ NEVER DO:
 
 BEHAVIOR:
 - Use actual queue data from tools — never fabricate numbers
+- Tools are already scoped to the authenticated clinic; patients are automatically scoped to their own queue position
 - Present wait times as estimates, not guarantees
 - For patients: be reassuring and clear about their position
 - For doctors/admins: be data-driven and concise`;

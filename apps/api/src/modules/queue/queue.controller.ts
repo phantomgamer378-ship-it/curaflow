@@ -203,3 +203,86 @@ export async function patientJoinQueue(req: AuthenticatedRequest, res: Response,
     next(error);
   }
 }
+
+export async function skipConsult(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params; // Appointment ID
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({ ok: false, error: "Appointment not found" });
+    }
+
+    const doctor = await prisma.doctor.findUnique({
+      where: { profileId: req.user?.id },
+    });
+
+    if (!doctor || appointment.doctorId !== doctor.id) {
+      return res.status(403).json({ ok: false, error: "Unauthorized: Appointment belongs to another doctor" });
+    }
+
+    const { skipPatient } = await import("@clinic/queue");
+    const snapshot = await skipPatient(appointment.id, doctor.id, appointment.clinicId);
+
+    // Broadcast queue update instantly to all screens (TVs, patients)
+    broadcastQueueUpdate(appointment.clinicId, snapshot);
+
+    // Queue notification that the patient has been skipped
+    const { notificationQueue } = await import("../../config/queue");
+    const patientProfile = await prisma.patient.findUnique({
+      where: { id: appointment.patientId },
+      include: { profile: true }
+    });
+
+    if (patientProfile?.profile?.email) {
+      await notificationQueue.add("send-booking-reschedule", {
+        appointmentId: appointment.id,
+        patientId: appointment.patientId,
+        email: patientProfile.profile.email,
+        reason: "You've been moved to the end of the queue since you were not ready."
+      });
+    }
+
+    return res.json({ ok: true, data: snapshot });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeQueueEntry(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params; // Appointment ID
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({ ok: false, error: "Appointment not found" });
+    }
+
+    const doctor = await prisma.doctor.findUnique({
+      where: { profileId: req.user?.id },
+    });
+
+    if (!doctor || appointment.doctorId !== doctor.id) {
+      return res.status(403).json({ ok: false, error: "Unauthorized: Appointment belongs to another doctor" });
+    }
+
+    const { markNoShow } = await import("@clinic/queue");
+    const snapshot = await markNoShow({
+      appointmentId: appointment.id,
+      doctorId: doctor.id,
+      clinicId: appointment.clinicId,
+    });
+
+    broadcastQueueUpdate(appointment.clinicId, snapshot);
+
+    return res.json({ ok: true, data: snapshot });
+  } catch (error) {
+    next(error);
+  }
+}

@@ -32,6 +32,7 @@ export const signupInputSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
   role: z.enum(["patient", "doctor", "admin"]).optional(),
+  phone: z.string().optional(),
 });
 export type SignupInput = z.infer<typeof signupInputSchema>;
 
@@ -114,8 +115,12 @@ export type DoctorLeaveInput = z.infer<typeof doctorLeaveInputSchema>;
 
 // ─── Queue Schemas ───────────────────────────────────────────────────
 export const publicQueueSnapshotSchema = z.object({
-  current_token: z.number().int().nonnegative(),
-  waiting_count: z.number().int().nonnegative(),
+  doctors: z.array(z.object({
+    doctor_id: z.string(),
+    doctor_name: z.string(),
+    current_token: z.number().int().nonnegative(),
+    waiting_count: z.number().int().nonnegative(),
+  })),
 });
 export type PublicQueueSnapshot = z.infer<typeof publicQueueSnapshotSchema>;
 

@@ -15,10 +15,12 @@ import { createLogger } from "@clinic/observability";
 
 // We will import routers next
 import { authRouter } from "./modules/auth/auth.router";
+import { patientRouter } from "./modules/patient/patient.router";
 import { queueRouter } from "./modules/queue/queue.router";
 import { appointmentsRouter } from "./modules/appointments/appointments.router";
 import { adminRouter } from "./modules/admin/admin.router";
 import { doctorRouter } from "./modules/doctor/doctor.router";
+import { doctorsPublicRouter } from "./modules/doctor/doctors.public.router";
 import { aiRouter } from "./modules/ai/ai.router";
 import { authRateLimiter, apiRateLimiter } from "./middleware/rate-limit";
 
@@ -41,10 +43,12 @@ app.get("/api/health", (_req, res) => res.json({ ok: true, status: "healthy", ts
 
 // Register API Routes with rate limiting
 app.use("/api/auth", authRateLimiter, authRouter);
+app.use("/api/patient", apiRateLimiter, patientRouter);
 app.use("/api/queue", queueRouter);
 app.use("/api/appointments", apiRateLimiter, appointmentsRouter);
 app.use("/api/admin", apiRateLimiter, adminRouter);
 app.use("/api/doctor", apiRateLimiter, doctorRouter);
+app.use("/api/doctors", apiRateLimiter, doctorsPublicRouter);
 app.use("/api/ai", apiRateLimiter, aiRouter);
 
 // Global Error Handler Middleware

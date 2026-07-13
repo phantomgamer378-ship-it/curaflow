@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { Brand } from "./brand";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const links = [
   ["How it works", "/how-it-works"],
@@ -17,6 +20,7 @@ export function MarketingHeader() {
           {links.map(([label, href]) => <Link href={href} key={href}>{label}</Link>)}
         </nav>
         <div className="header-actions">
+          <ThemeToggle />
           <Link className="login-link" href="/login">Log in</Link>
           <Link className="button button-primary header-cta" href="/register">Book an appointment</Link>
         </div>

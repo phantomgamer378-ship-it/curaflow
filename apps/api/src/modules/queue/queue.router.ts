@@ -5,7 +5,9 @@ import {
   completeConsult, 
   markConsultNoShow, 
   startSession, 
-  patientJoinQueue 
+  patientJoinQueue,
+  skipConsult,
+  removeQueueEntry
 } from "./queue.controller";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { auditLog } from "../../middleware/audit";
@@ -42,6 +44,22 @@ router.post(
   requireRole(["doctor"]),
   auditLog("NO_SHOW_MARKED", "Appointment"),
   markConsultNoShow
+);
+
+router.post(
+  "/:id/skip",
+  requireAuth,
+  requireRole(["doctor"]),
+  auditLog("PATIENT_SKIPPED", "Appointment"),
+  skipConsult
+);
+
+router.post(
+  "/:id/remove",
+  requireAuth,
+  requireRole(["doctor"]),
+  auditLog("PATIENT_REMOVED_FROM_QUEUE", "Appointment"),
+  removeQueueEntry
 );
 
 export { router as queueRouter };

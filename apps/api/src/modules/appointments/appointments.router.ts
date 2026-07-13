@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAppointments, getAvailableDoctors, bookAppointment, reschedule, cancel } from "./appointments.controller";
+import { getAppointments, getAvailableDoctors, bookAppointment, reschedule, cancel, getNotifications } from "./appointments.controller";
 import { requireAuth } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { auditLog } from "../../middleware/audit";
@@ -11,6 +11,7 @@ router.use(requireAuth);
 
 router.get("/doctors", getAvailableDoctors);
 router.get("/", getAppointments);
+router.get("/notifications", getNotifications);
 
 router.post(
   "/",

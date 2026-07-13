@@ -2,46 +2,57 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { getCurrentQueueSnapshot, getAverageWaitTime, getQueuePositionForPatient } from "../../integration/queue-hooks";
 
-export const queueSnapshotTool = tool(
-  async (input: any) => {
-    const result = await getCurrentQueueSnapshot(input.clinic_id);
-    return JSON.stringify(result);
-  },
-  {
-    name: "get_queue_snapshot",
-    description: "Get the current live queue snapshot for a clinic (current token, waiting count).",
-    schema: z.object({ clinic_id: z.string() }),
-  }
-);
+interface QueueToolContext {
+  clinic_id: string;
+  role: "patient" | "doctor" | "admin";
+  patient_id?: string;
+}
 
-export const waitTimeTool = tool(
-  async (input: any) => {
-    const result = await getAverageWaitTime(input.clinic_id, input.doctor_id);
-    return JSON.stringify(result);
-  },
-  {
-    name: "get_wait_time",
-    description: "Estimate current wait time at a clinic, optionally for a specific doctor.",
-    schema: z.object({
-      clinic_id: z.string(),
-      doctor_id: z.string().nullable().optional(),
-    }),
-  }
-);
+export function createQueueIntelligenceTools(ctx: QueueToolContext) {
+  const queueSnapshotTool = tool(
+    async () => {
+      const result = await getCurrentQueueSnapshot(ctx.clinic_id);
+      return JSON.stringify(result);
+    },
+    {
+      name: "get_queue_snapshot",
+      description: "Get the current live queue snapshot for the authenticated clinic.",
+      schema: z.object({}),
+    }
+  );
 
-export const patientPositionTool = tool(
-  async (input: any) => {
-    const result = await getQueuePositionForPatient(input.clinic_id, input.patient_id);
-    return JSON.stringify(result);
-  },
-  {
-    name: "get_patient_position",
-    description: "Get a specific patient's position in the queue.",
-    schema: z.object({
-      clinic_id: z.string(),
-      patient_id: z.string(),
-    }),
-  }
-);
+  const waitTimeTool = tool(
+    async (input: any) => {
+      const result = await getAverageWaitTime(ctx.clinic_id, input.doctor_id ?? undefined);
+      return JSON.stringify(result);
+    },
+    {
+      name: "get_wait_time",
+      description: "Estimate current wait time in the authenticated clinic, optionally for a specific doctor.",
+      schema: z.object({
+        doctor_id: z.string().nullable().optional(),
+      }),
+    }
+  );
 
-export const queueIntelligenceTools = [queueSnapshotTool, waitTimeTool, patientPositionTool];
+  const patientPositionTool = tool(
+    async (input: any) => {
+      const patientId = ctx.role === "patient" ? ctx.patient_id : input.patient_id;
+      if (!patientId) {
+        throw new Error("Patient context is required to check queue position.");
+      }
+
+      const result = await getQueuePositionForPatient(ctx.clinic_id, patientId);
+      return JSON.stringify(result);
+    },
+    {
+      name: "get_patient_position",
+      description: "Get queue position. Patients are automatically scoped to themselves; doctors/admins may provide a patient ID within the clinic.",
+      schema: z.object({
+        patient_id: z.string().nullable().optional(),
+      }),
+    }
+  );
+
+  return [queueSnapshotTool, waitTimeTool, patientPositionTool];
+}

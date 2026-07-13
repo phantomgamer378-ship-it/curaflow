@@ -1,27 +1,18 @@
-import { Queue, Worker, type ConnectionOptions, type WorkerOptions } from "bullmq";
+import { Queue, Worker, type WorkerOptions } from "bullmq";
+import Redis from "ioredis";
 import { createLogger } from "@clinic/observability";
 
 const logger = createLogger("queue");
 
-function getConnection(): ConnectionOptions {
+function getRedisInstance(): Redis {
   const url = process.env.UPSTASH_REDIS_URL || "redis://localhost:6379";
-  const connection: ConnectionOptions = {
-    url,
+  return new Redis(url, {
     maxRetriesPerRequest: null,
-  };
-
-  if (url.startsWith("rediss://")) {
-    return {
-      ...connection,
-      tls: {},
-    };
-  }
-
-  return connection;
+  });
 }
 
 export function getQueue(name: string) {
-  return new Queue(name, { connection: getConnection() });
+  return new Queue(name, { connection: getRedisInstance() as any });
 }
 
 export const notificationQueue = { get: () => getQueue("notification-queue") };
@@ -40,7 +31,7 @@ export function createWorker<T>(
       logger.info(`Processing job ${job.name} in ${queueName}`, { id: job.id ?? null });
       await processor(job);
     },
-    { ...options, connection: getConnection() }
+    { ...options, connection: getRedisInstance() as any }
   );
 
   worker.on("completed", (job) => {

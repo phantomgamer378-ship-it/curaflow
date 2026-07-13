@@ -2,7 +2,7 @@ import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages
 import type { AdminInsightsState } from "./schemas";
 import { ADMIN_INSIGHTS_SYSTEM_PROMPT } from "./prompts";
 import { getModel } from "../../core/model-registry";
-import { adminInsightsTools } from "./tools";
+import { createAdminInsightsTools } from "./tools";
 import { enforcePolicy } from "../../core/policies";
 import { AGENT_NAMES } from "../../core/constants";
 import { logAgentEvent, logAgentError, type TraceContext } from "../../core/tracing";
@@ -21,6 +21,7 @@ export async function reason(state: AdminInsightsState): Promise<AdminInsightsSt
   logAgentEvent(trace, "reason_start");
   try {
     const model = getModel();
+    const adminInsightsTools = createAdminInsightsTools({ clinic_id: state.clinic_id });
     const modelWithTools = model.bindTools(adminInsightsTools);
     const messages = [
       new SystemMessage(ADMIN_INSIGHTS_SYSTEM_PROMPT + `\nContext: clinic_id=${state.clinic_id}`),

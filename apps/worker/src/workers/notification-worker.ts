@@ -38,14 +38,14 @@ export const notificationWorker = createWorker<any>(
           userId: targetUserId,
           channel: "email",
           status: "pending",
-          payload: {
+          payload: JSON.stringify({
             jobName: job.name,
             email,
             name,
             tokenNo,
             resetToken,
             newSlotTime,
-          }
+          })
         }
       });
       notificationId = newNotification.id;

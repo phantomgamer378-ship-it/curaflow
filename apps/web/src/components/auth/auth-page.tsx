@@ -51,6 +51,7 @@ export function AuthPage({ mode, redirectTo = "/patient", resetToken = "" }: Aut
     const email = formData.get("email")?.toString();
     const name = formData.get("name")?.toString() || "User";
     const role = formData.get("role")?.toString() || "patient";
+    const phone = formData.get("phone")?.toString() || "";
 
     try {
       let endpoint = "";
@@ -61,7 +62,7 @@ export function AuthPage({ mode, redirectTo = "/patient", resetToken = "" }: Aut
         payload = { email, password };
       } else if (mode === "register") {
         endpoint = "/api/auth/signup";
-        payload = { email, password, name, role };
+        payload = { email, password, name, role, phone };
       } else if (mode === "forgot-password") {
         endpoint = "/api/auth/forgot-password";
         payload = { email };
@@ -169,6 +170,10 @@ export function AuthPage({ mode, redirectTo = "/patient", resetToken = "" }: Aut
             <label style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem", fontWeight: 500, color: "var(--color-slate-700)" }}>
               Full name
               <input name="name" type="text" placeholder="e.g. Jane Doe" required disabled={isLoading} style={{ padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--color-slate-300)", transition: "border-color 0.2s, box-shadow 0.2s", outline: "none" }} />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem", fontWeight: 500, color: "var(--color-slate-700)" }}>
+              Phone number
+              <input name="phone" type="tel" placeholder="e.g. +1 555-0199" required disabled={isLoading} style={{ padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--color-slate-300)", transition: "border-color 0.2s, box-shadow 0.2s", outline: "none" }} />
             </label>
           </>
         )}

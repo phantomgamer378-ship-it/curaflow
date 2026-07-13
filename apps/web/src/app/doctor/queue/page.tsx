@@ -1,5 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import { DoctorQueueControls } from "@/components/dashboard/doctor-queue-controls";
+import { DoctorWaitingList } from "@/components/dashboard/doctor-waiting-list";
+import { DoctorNoteDraftPanel } from "@/components/ai/DoctorNoteDraftPanel";
 import { CalendarDays, MapPin } from "lucide-react";
 
 export default async function DoctorQueuePage() {
@@ -9,7 +11,7 @@ export default async function DoctorQueuePage() {
   ]);
 
   if (!profileRes.ok || !profileRes.data) {
-    return <div style={{ padding: "2rem" }}>Profile not found or unauthorized</div>;
+    return <div style={{ padding: "40px", textAlign: "center" }}>Profile not found or unauthorized</div>;
   }
 
   const doctor = profileRes.data;
@@ -28,59 +30,51 @@ export default async function DoctorQueuePage() {
   );
 
   return (
-    <main className="dashboard-page">
-      <div className="dashboard-heading">
-        <div>
-          <span className="overline">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-          <h1>Queue Management</h1>
-          <p>Control your active queue and see who is up next.</p>
+    <main style={{ padding: "45px 42px" }}>
+      <header style={{ marginBottom: "38px" }}>
+        <span style={{ fontSize: "11px", color: "var(--brand)", textTransform: "uppercase", letterSpacing: ".1em", fontWeight: 800, marginBottom: "8px", display: "block" }}>
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </span>
+        <h1 style={{ fontFamily: "var(--serif)", fontSize: "38px", fontWeight: 400, letterSpacing: "-.04em", margin: "0 0 8px" }}>
+          Queue Management
+        </h1>
+        <p style={{ color: "var(--muted)", margin: 0, fontSize: "15px" }}>
+          Control your active queue and see who is up next.
+        </p>
+      </header>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "24px" }}>
+        
+        {/* Left Column: Waiting List */}
+        <section className="dashboard-panel">
+          <div style={{ borderBottom: "1px solid var(--line)", padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <strong style={{ fontSize: "14px", color: "var(--ink)" }}>Waiting List ({waitingList.length})</strong>
+          </div>
+          <DoctorWaitingList waitingList={waitingList} />
+        </section>
+
+        {/* Right Column: Controls */}
+        <div style={{ display: "grid", alignContent: "start" }}>
+          <section className="dashboard-panel">
+            <div style={{ borderBottom: "1px solid var(--line)", padding: "20px 24px", display: "flex", alignItems: "center" }}>
+              <strong style={{ fontSize: "14px", color: "var(--ink)" }}>Live Controls</strong>
+            </div>
+            <DoctorQueueControls 
+              doctorId={doctor.id} 
+              clinicId={doctor.clinicId}
+              currentToken={currentToken}
+              nextAppointmentId={activeApt?.id}
+              nextPatientName={activeApt?.patient?.profile?.name}
+              isInProgress={!!inProgressApt}
+              hasSessionStarted={!!session}
+            />
+          </section>
+
+          <section style={{ marginTop: "24px" }}>
+            <DoctorNoteDraftPanel />
+          </section>
         </div>
-      </div>
 
-      <div className="dashboard-grid" style={{ marginTop: "2rem" }}>
-        <section className="dashboard-panel">
-          <div className="panel-heading">
-            <strong>Controls</strong>
-          </div>
-          <DoctorQueueControls 
-            doctorId={doctor.id} 
-            clinicId={doctor.clinicId}
-            currentToken={currentToken}
-            nextAppointmentId={activeApt?.id}
-            nextPatientName={activeApt?.patient?.profile?.name}
-            isInProgress={!!inProgressApt}
-            hasSessionStarted={!!session}
-          />
-        </section>
-
-        <section className="dashboard-panel">
-          <div className="panel-heading">
-            <strong>Waiting List ({waitingList.length})</strong>
-          </div>
-          {waitingList.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", padding: "1rem" }}>
-              {waitingList.map((apt: any) => (
-                <div key={apt.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1rem", background: "var(--color-slate-50)", borderRadius: "8px", border: "1px solid var(--color-slate-200)" }}>
-                  <div>
-                    <strong style={{ display: "block" }}>{apt.patient?.profile?.name}</strong>
-                    <small style={{ color: "var(--color-slate-500)" }}>
-                      {new Date(apt.slotTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </small>
-                  </div>
-                  <div>
-                    <span className="badge" style={{ background: apt.status === "in_consultation" ? "var(--color-blue-100)" : "var(--color-slate-100)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.75rem" }}>
-                      T-{apt.tokenNo} {apt.status === "in_consultation" && "(In Progress)"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-slate-500)" }}>
-              No patients waiting.
-            </div>
-          )}
-        </section>
       </div>
     </main>
   );

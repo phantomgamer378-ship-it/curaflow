@@ -8,87 +8,86 @@ import {
   validateBookingRequest,
 } from "../../integration/appointment-hooks";
 
-export const searchDoctorsTool = tool(
-  async (input: any) => {
-    const results = await searchAvailableSlots(input.clinic_id, input.specialty);
-    return JSON.stringify(results);
-  },
-  {
-    name: "search_doctors",
-    description: "Search for available doctors in the clinic, optionally filtered by specialty.",
-    schema: z.object({
-      clinic_id: z.string().describe("The clinic ID to search within"),
-      specialty: z.string().nullable().optional().describe("Filter by specialty (e.g., 'Cardiology', 'General')"),
-    }),
-  }
-);
+interface AppointmentToolContext {
+  clinic_id: string;
+  patient_id: string;
+}
 
-export const checkAvailabilityTool = tool(
-  async (input: any) => {
-    const result = await getDoctorAvailability(input.clinic_id, input.doctor_id, input.date);
-    return JSON.stringify(result);
-  },
-  {
-    name: "check_doctor_availability",
-    description: "Check a specific doctor's availability for a given date.",
-    schema: z.object({
-      clinic_id: z.string().describe("The clinic ID"),
-      doctor_id: z.string().describe("The doctor ID to check"),
-      date: z.string().describe("Date in YYYY-MM-DD format"),
-    }),
-  }
-);
+export function createAppointmentAssistantTools(ctx: AppointmentToolContext) {
+  const searchDoctorsTool = tool(
+    async (input: any) => {
+      const specialty = input.specialty ?? undefined;
+      const results = await searchAvailableSlots(ctx.clinic_id, specialty);
+      return JSON.stringify(results);
+    },
+    {
+      name: "search_doctors",
+      description: "Search for available doctors in the authenticated clinic, optionally filtered by specialty.",
+      schema: z.object({
+        specialty: z.string().nullable().optional().describe("Filter by specialty (e.g., 'Cardiology', 'General')"),
+      }),
+    }
+  );
 
-export const myAppointmentsTool = tool(
-  async (input: any) => {
-    const results = await getPatientUpcomingAppointments(input.patient_id, input.clinic_id);
-    return JSON.stringify(results);
-  },
-  {
-    name: "get_my_appointments",
-    description: "Get the patient's upcoming appointments.",
-    schema: z.object({
-      patient_id: z.string().describe("The patient ID"),
-      clinic_id: z.string().describe("The clinic ID"),
-    }),
-  }
-);
+  const checkAvailabilityTool = tool(
+    async (input: any) => {
+      const result = await getDoctorAvailability(ctx.clinic_id, input.doctor_id, input.date);
+      return JSON.stringify(result);
+    },
+    {
+      name: "check_doctor_availability",
+      description: "Check a specific doctor's availability for a given date in the authenticated clinic.",
+      schema: z.object({
+        doctor_id: z.string().describe("The doctor ID to check"),
+        date: z.string().describe("Date in YYYY-MM-DD format"),
+      }),
+    }
+  );
 
-export const validateBookingTool = tool(
-  async (input: any) => {
-    const result = await validateBookingRequest(input.patient_id, input.doctor_id, input.clinic_id, input.slot_time);
-    return JSON.stringify(result);
-  },
-  {
-    name: "validate_booking",
-    description: "Validate if a booking slot is available. Does NOT create the appointment — only checks feasibility.",
-    schema: z.object({
-      patient_id: z.string().describe("The patient ID"),
-      doctor_id: z.string().describe("The doctor ID"),
-      clinic_id: z.string().describe("The clinic ID"),
-      slot_time: z.string().describe("ISO datetime string for the slot"),
-    }),
-  }
-);
+  const myAppointmentsTool = tool(
+    async () => {
+      const results = await getPatientUpcomingAppointments(ctx.patient_id, ctx.clinic_id);
+      return JSON.stringify(results);
+    },
+    {
+      name: "get_my_appointments",
+      description: "Get the authenticated patient's upcoming appointments.",
+      schema: z.object({}),
+    }
+  );
 
-export const listDoctorsTool = tool(
-  async (input: any) => {
-    const results = await listClinicDoctors(input.clinic_id);
-    return JSON.stringify(results);
-  },
-  {
-    name: "list_clinic_doctors",
-    description: "List all active doctors in the clinic.",
-    schema: z.object({
-      clinic_id: z.string().describe("The clinic ID"),
-    }),
-  }
-);
+  const validateBookingTool = tool(
+    async (input: any) => {
+      const result = await validateBookingRequest(ctx.patient_id, input.doctor_id, ctx.clinic_id, input.slot_time);
+      return JSON.stringify(result);
+    },
+    {
+      name: "validate_booking",
+      description: "Validate if a booking slot is available. Does NOT create the appointment; only checks feasibility.",
+      schema: z.object({
+        doctor_id: z.string().describe("The doctor ID"),
+        slot_time: z.string().describe("ISO datetime string for the slot"),
+      }),
+    }
+  );
 
-export const appointmentAssistantTools = [
-  searchDoctorsTool,
-  checkAvailabilityTool,
-  myAppointmentsTool,
-  validateBookingTool,
-  listDoctorsTool,
-];
+  const listDoctorsTool = tool(
+    async () => {
+      const results = await listClinicDoctors(ctx.clinic_id);
+      return JSON.stringify(results);
+    },
+    {
+      name: "list_clinic_doctors",
+      description: "List all active doctors in the authenticated clinic.",
+      schema: z.object({}),
+    }
+  );
+
+  return [
+    searchDoctorsTool,
+    checkAvailabilityTool,
+    myAppointmentsTool,
+    validateBookingTool,
+    listDoctorsTool,
+  ];
+}

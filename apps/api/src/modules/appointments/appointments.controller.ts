@@ -63,7 +63,7 @@ export async function getAppointments(req: AuthenticatedRequest, res: Response, 
           patient: {
             include: {
               profile: {
-                select: { name: true, phone: true } as any,
+                select: { name: true, phone: true, email: true } as any,
               },
             },
           },
@@ -173,10 +173,74 @@ export async function bookAppointment(req: AuthenticatedRequest, res: Response, 
         },
       });
 
-      // Explicit Queue joining will now happen later via patient action
+      // If slotTime is today, auto-join queue
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const slotStr = slotDate.toISOString().slice(0, 10);
+      if (todayStr === slotStr) {
+        // Look up or create queue session
+        let session = await tx.queueSession.findUnique({
+          where: {
+            doctorId_sessionDate: {
+              doctorId,
+              sessionDate: startOfDay,
+            }
+          }
+        });
+
+        if (!session) {
+          session = await tx.queueSession.create({
+            data: {
+              doctorId,
+              sessionDate: startOfDay,
+              status: doctor.isOnline ? "active" : "not_started",
+              currentToken: 0
+            }
+          });
+        }
+
+        const positionCount = await tx.queueEntry.count({
+          where: { sessionId: session.id }
+        });
+
+        await tx.queueEntry.create({
+          data: {
+            sessionId: session.id,
+            appointmentId: appt.id,
+            position: positionCount + 1,
+            status: "waiting",
+            joinedAt: new Date(),
+          }
+        });
+
+        await tx.queueEvent.create({
+          data: {
+            sessionId: session.id,
+            type: "APPOINTMENT_CREATED",
+            payload: JSON.stringify({ appointmentId: appt.id })
+          }
+        });
+
+        await tx.queueEvent.create({
+          data: {
+            sessionId: session.id,
+            type: "QUEUE_JOINED",
+            payload: JSON.stringify({ appointmentId: appt.id })
+          }
+        });
+      }
 
       return appt;
     });
+
+    // Broadcast queue update if same-day
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const slotStr = slotDate.toISOString().slice(0, 10);
+    if (todayStr === slotStr) {
+      const { getLiveQueueSnapshot } = await import("@clinic/queue");
+      const { broadcastQueueUpdate } = await import("../../config/socket");
+      const snapshot = await getLiveQueueSnapshot(doctor.clinicId);
+      broadcastQueueUpdate(doctor.clinicId, snapshot);
+    }
 
     // Queue reminder and confirmation notifications
     await notificationQueue.add("send-booking-confirmation", {
@@ -277,6 +341,19 @@ export async function cancel(req: AuthenticatedRequest, res: Response, next: Nex
     });
 
     return res.json({ ok: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getNotifications(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: { userId: req.user?.id },
+      orderBy: { createdAt: "desc" },
+      take: 10
+    });
+    return res.json({ ok: true, data: notifications });
   } catch (error) {
     next(error);
   }

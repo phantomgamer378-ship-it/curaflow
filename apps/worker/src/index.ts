@@ -27,6 +27,7 @@ async function main() {
   // Lazy import so env vars are available when these modules initialize
   const { notificationWorker } = await import("./workers/notification-worker");
   const { aiWorker } = await import("./workers/ai-worker");
+  const { queueWorker } = await import("./workers/queue-worker");
 
   logger.info("All workers started successfully.");
 
@@ -34,6 +35,7 @@ async function main() {
     logger.info("Shutting down workers...");
     await notificationWorker.close();
     await aiWorker.close();
+    await queueWorker.close();
     process.exit(0);
   });
 
@@ -41,6 +43,7 @@ async function main() {
     logger.info("Shutting down workers...");
     await notificationWorker.close();
     await aiWorker.close();
+    await queueWorker.close();
     process.exit(0);
   });
 }

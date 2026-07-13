@@ -75,6 +75,18 @@ Time:    34.645s
 
 ---
 
+## 4. Redis Connection Fix (Upstash Integration)
+
+* **Root Cause Diagnosis**:
+  * During startup, the API server and worker were displaying recurring `AggregateError [ECONNREFUSED]` trying to connect to local Redis on `127.0.0.1:6379`.
+  * We identified two root causes:
+    1. **Hoisting of ES Module Imports**: Inside `apps/api/src/index.ts`, modules importing `queue.ts` were executed before `dotenv` runtime environment configuration block had executed.
+    2. **`ioredis` client duplication behavior**: In the socket configuration (`socket.ts`), calling `.duplicate()` on the primary Redis client did not copy the parsed URL connection details, causing the duplicate client connections (subscription/broadcast) to fallback to the default `localhost:6379`.
+* **Solutions Applied**:
+  * **Lazy Initialization**: Refactored `apps/api/src/config/queue.ts` to lazily construct BullMQ Queue instances on first access, allowing `dotenv` to load the `UPSTASH_REDIS_URL` prior to instantiating connections.
+  * **Explicit Constructor Re-use**: Modified `apps/api/src/config/socket.ts` to instantiate duplicate subscription clients explicitly using `new Redis(url)` instead of `duplicate()`.
+  * **Status**: Verified connection health. The API server connects successfully to the Upstash Redis URL with zero connection refusal errors.
+
 ## 5. Next Steps (To Wire Frontend → Express)
 
 To complete the end-to-end cutover, update the frontend to point to the Express API instead of Next.js built-in `/api` routes:

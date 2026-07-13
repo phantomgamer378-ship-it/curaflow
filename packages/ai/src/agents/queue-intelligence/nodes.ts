@@ -2,7 +2,7 @@ import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages
 import type { QueueIntelligenceState } from "./schemas";
 import { QUEUE_INTELLIGENCE_SYSTEM_PROMPT } from "./prompts";
 import { getModel } from "../../core/model-registry";
-import { queueIntelligenceTools } from "./tools";
+import { createQueueIntelligenceTools } from "./tools";
 import { enforcePolicy } from "../../core/policies";
 import { AGENT_NAMES } from "../../core/constants";
 import { logAgentEvent, logAgentError, type TraceContext } from "../../core/tracing";
@@ -29,9 +29,17 @@ export async function reason(state: QueueIntelligenceState): Promise<QueueIntell
   logAgentEvent(trace, "reason_start");
   try {
     const model = getModel();
+    const queueIntelligenceTools = createQueueIntelligenceTools({
+      clinic_id: state.clinic_id,
+      role: state.role,
+      patient_id: state.patient_id,
+    });
     const modelWithTools = model.bindTools(queueIntelligenceTools);
     const messages = [
-      new SystemMessage(QUEUE_INTELLIGENCE_SYSTEM_PROMPT + `\nContext: clinic_id=${state.clinic_id}, role=${state.role}`),
+      new SystemMessage(
+        QUEUE_INTELLIGENCE_SYSTEM_PROMPT +
+          `\nContext: clinic_id=${state.clinic_id}, role=${state.role}, patient_id=${state.patient_id ?? "none"}`
+      ),
       ...state.messages.map((m) => m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)),
     ];
     const response = await modelWithTools.invoke(messages);

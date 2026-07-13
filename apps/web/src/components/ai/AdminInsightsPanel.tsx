@@ -20,43 +20,56 @@ export function AdminInsightsPanel() {
   }
 
   return (
-    <div className="dashboard-panel" style={{ padding: "1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-        <Sparkles size={20} color="var(--color-blue-600)" />
-        <strong>AI Operations Assistant</strong>
+    <div style={{ background: "white", borderRadius: "16px", padding: "24px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", border: "1px solid var(--line)", display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
+        <div style={{ background: "var(--canvas)", padding: "8px", borderRadius: "8px", color: "var(--brand)" }}>
+          <Sparkles size={18} />
+        </div>
+        <strong style={{ fontFamily: "var(--serif)", fontSize: "18px", fontWeight: 500 }}>AI Operations Assistant</strong>
       </div>
 
-      <div style={{ minHeight: "200px", maxHeight: "350px", overflowY: "auto", marginBottom: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+      <div style={{ flex: 1, overflowY: "auto", marginBottom: "16px", display: "flex", flexDirection: "column", gap: "12px", background: "var(--canvas)", padding: "16px", borderRadius: "12px", border: "1px solid var(--line)" }}>
         {messages.length === 0 && (
-          <div style={{ textAlign: "center", color: "var(--color-slate-400)", padding: "2rem", fontSize: "0.875rem" }}>
-            <BarChart3 size={32} style={{ margin: "0 auto 0.5rem", opacity: 0.5 }} />
-            <p>Ask me about no-show rates, booking trends, doctor utilization, or schedule optimization.</p>
+          <div style={{ textAlign: "center", color: "var(--muted)", padding: "32px 16px", fontSize: "14px" }}>
+            <div style={{ background: "white", width: "48px", height: "48px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", color: "var(--brand)" }}>
+              <BarChart3 size={24} />
+            </div>
+            <p style={{ lineHeight: 1.5 }}>Ask me about no-show rates, booking trends, doctor utilization, or schedule optimization.</p>
           </div>
         )}
         {messages.map((msg, i) => (
           <div key={i} style={{
-            padding: "0.75rem", borderRadius: "8px", fontSize: "0.875rem", lineHeight: 1.5, whiteSpace: "pre-wrap",
-            background: msg.role === "user" ? "var(--color-blue-50)" : "var(--color-slate-50)",
-            border: `1px solid ${msg.role === "user" ? "var(--color-blue-200)" : "var(--color-slate-200)"}`,
+            padding: "12px", borderRadius: "12px", fontSize: "14px", lineHeight: 1.5, whiteSpace: "pre-wrap",
+            background: msg.role === "user" ? "white" : "var(--brand)",
+            color: msg.role === "user" ? "var(--ink)" : "white",
+            border: msg.role === "user" ? "1px solid var(--line)" : "none",
+            alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+            maxWidth: "90%",
+            borderBottomRightRadius: msg.role === "user" ? "4px" : "12px",
+            borderBottomLeftRadius: msg.role !== "user" ? "4px" : "12px",
           }}>
-            <small style={{ fontWeight: 600, color: "var(--color-slate-500)", display: "block", marginBottom: "0.25rem" }}>
-              {msg.role === "user" ? "You" : "AI"}
+            <small style={{ fontWeight: 600, color: msg.role === "user" ? "var(--muted)" : "rgba(255,255,255,0.7)", display: "block", marginBottom: "4px", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              {msg.role === "user" ? "You" : "Insights AI"}
             </small>
             {msg.content}
           </div>
         ))}
-        {isLoading && <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--color-slate-400)", fontSize: "0.875rem" }}><Loader2 size={16} className="spin" /> Analyzing...</div>}
-        {error && <div style={{ padding: "0.5rem", background: "#fee2e2", color: "#b91c1c", borderRadius: "8px", fontSize: "0.75rem" }}>{error}</div>}
+        {isLoading && <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--muted)", fontSize: "13px", padding: "8px" }}><Loader2 size={14} className="spin" /> Analyzing data...</div>}
+        {error && <div style={{ padding: "12px", background: "#fff5f5", color: "#dc2626", borderRadius: "8px", fontSize: "13px", border: "1px solid #fed7d7" }}>{error}</div>}
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", gap: "0.5rem" }}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", gap: "8px" }}>
         <input
           type="text" value={input} onChange={(e) => setInput(e.target.value)}
           placeholder="e.g., What's our no-show rate this month?"
           disabled={isLoading}
-          style={{ flex: 1, padding: "0.5rem 0.75rem", borderRadius: "8px", border: "1px solid var(--color-slate-300)", fontSize: "0.875rem" }}
+          style={{ flex: 1, padding: "12px 16px", borderRadius: "999px", border: "1px solid var(--line)", fontSize: "14px", outline: "none", background: "var(--canvas)" }}
         />
-        <button type="submit" disabled={isLoading || !input.trim()} className="button button-primary" style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+        <button type="submit" disabled={isLoading || !input.trim()} style={{ 
+          background: "var(--brand)", color: "white", border: "none", borderRadius: "999px", padding: "0 20px",
+          cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", fontWeight: 500,
+          opacity: (!input.trim() || isLoading) ? 0.5 : 1
+        }}>
           <Send size={14} /> Ask
         </button>
       </form>

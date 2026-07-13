@@ -13,35 +13,40 @@ export async function getLiveQueueSnapshot(clinicId: string): Promise<PublicQueu
 
   const doctors = await prisma.doctor.findMany({
     where: { clinicId, deletedAt: null },
-    select: { id: true }
+    include: { profile: true }
   });
 
-  const doctorIds = doctors.map(d => d.id);
+  const snapshotDoctors: Array<{ doctor_id: string; doctor_name: string; current_token: number; waiting_count: number }> = [];
 
-  const sessions = await prisma.queueSession.findMany({
-    where: {
-      doctorId: { in: doctorIds },
-      sessionDate: todayDate
-    },
-    select: { id: true, currentToken: true }
-  });
+  for (const doc of doctors) {
+    const session = await prisma.queueSession.findFirst({
+      where: {
+        doctorId: doc.id,
+        sessionDate: todayDate
+      }
+    });
 
-  const currentToken = sessions.reduce((acc, s) => acc + s.currentToken, 0);
+    const currentToken = session ? session.currentToken : 0;
+    
+    let waitingCount = 0;
+    if (session) {
+      waitingCount = await prisma.queueEntry.count({
+        where: {
+          sessionId: session.id,
+          status: "waiting"
+        }
+      });
+    }
 
-  if (sessions.length === 0) {
-    return { current_token: 0, waiting_count: 0 };
+    snapshotDoctors.push({
+      doctor_id: doc.id,
+      doctor_name: doc.profile?.name || "Doctor",
+      current_token: currentToken,
+      waiting_count: waitingCount,
+    });
   }
 
-  const sessionIds = sessions.map(s => s.id);
-
-  const waitingCount = await prisma.queueEntry.count({
-    where: {
-      sessionId: { in: sessionIds },
-      status: "waiting"
-    }
-  });
-
-  return { current_token: currentToken, waiting_count: waitingCount };
+  return { doctors: snapshotDoctors };
 }
 
 async function getOrCreateSession(doctorId: string) {
@@ -67,14 +72,23 @@ export async function startConsultation(input: QueueTransaction): Promise<void> 
       where: { id: input.appointmentId },
       data: { status: "in_consultation" }
     }),
-    prisma.queueEntry.update({
+    prisma.queueEntry.upsert({
       where: {
         sessionId_appointmentId: {
           sessionId: session.id,
           appointmentId: input.appointmentId
         }
       },
-      data: { status: "in_consultation" }
+      create: {
+        sessionId: session.id,
+        appointmentId: input.appointmentId,
+        position: 0,
+        status: "in_consultation",
+        joinedAt: new Date()
+      },
+      update: {
+        status: "in_consultation"
+      }
     }),
     prisma.queueEvent.create({
       data: {
@@ -94,14 +108,23 @@ export async function markPatientDone(input: QueueTransaction): Promise<PublicQu
       where: { id: input.appointmentId },
       data: { status: "completed" }
     }),
-    prisma.queueEntry.update({
+    prisma.queueEntry.upsert({
       where: {
         sessionId_appointmentId: {
           sessionId: session.id,
           appointmentId: input.appointmentId
         }
       },
-      data: { status: "completed" }
+      create: {
+        sessionId: session.id,
+        appointmentId: input.appointmentId,
+        position: 0,
+        status: "completed",
+        joinedAt: new Date()
+      },
+      update: {
+        status: "completed"
+      }
     }),
     prisma.queueSession.update({
       where: { id: session.id },
@@ -127,14 +150,23 @@ export async function markNoShow(input: QueueTransaction): Promise<PublicQueueSn
       where: { id: input.appointmentId },
       data: { status: "no_show" }
     }),
-    prisma.queueEntry.update({
+    prisma.queueEntry.upsert({
       where: {
         sessionId_appointmentId: {
           sessionId: session.id,
           appointmentId: input.appointmentId
         }
       },
-      data: { status: "no_show" }
+      create: {
+        sessionId: session.id,
+        appointmentId: input.appointmentId,
+        position: 0,
+        status: "no_show",
+        joinedAt: new Date()
+      },
+      update: {
+        status: "no_show"
+      }
     }),
     prisma.queueEvent.create({
       data: {
@@ -208,6 +240,57 @@ export async function joinQueue(appointmentId: string, doctorId: string, clinicI
       }
     })
   ]);
+
+  return getLiveQueueSnapshot(clinicId);
+}
+
+export async function skipPatient(appointmentId: string, doctorId: string, clinicId: string): Promise<PublicQueueSnapshot> {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayDate = new Date(todayStr);
+
+  const session = await prisma.queueSession.findFirst({
+    where: { doctorId, sessionDate: todayDate }
+  });
+
+  if (!session) {
+    throw new Error("No active queue session for this doctor today.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const entries = await tx.queueEntry.findMany({
+      where: { sessionId: session.id },
+      orderBy: { position: "asc" }
+    });
+
+    const skippedEntry = entries.find(e => e.appointmentId === appointmentId);
+    if (!skippedEntry) {
+      throw new Error("Patient queue entry not found.");
+    }
+
+    const otherEntries = entries.filter(e => e.appointmentId !== appointmentId);
+
+    let pos = 1;
+    for (const entry of otherEntries) {
+      await tx.queueEntry.update({
+        where: { id: entry.id },
+        data: { position: pos }
+      });
+      pos++;
+    }
+
+    await tx.queueEntry.update({
+      where: { id: skippedEntry.id },
+      data: { position: pos }
+    });
+
+    await tx.queueEvent.create({
+      data: {
+        sessionId: session.id,
+        type: "PATIENT_SKIPPED",
+        payload: JSON.stringify({ appointmentId })
+      }
+    });
+  });
 
   return getLiveQueueSnapshot(clinicId);
 }

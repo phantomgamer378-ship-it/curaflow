@@ -2,7 +2,7 @@ import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages
 import type { AppointmentAssistantState } from "./schemas";
 import { APPOINTMENT_ASSISTANT_SYSTEM_PROMPT } from "./prompts";
 import { getModel } from "../../core/model-registry";
-import { appointmentAssistantTools } from "./tools";
+import { createAppointmentAssistantTools } from "./tools";
 import { enforcePolicy } from "../../core/policies";
 import { AGENT_NAMES } from "../../core/constants";
 import { logAgentEvent, logAgentError, type TraceContext } from "../../core/tracing";
@@ -40,6 +40,10 @@ export async function reason(state: AppointmentAssistantState): Promise<Appointm
 
   try {
     const model = getModel();
+    const appointmentAssistantTools = createAppointmentAssistantTools({
+      clinic_id: state.clinic_id,
+      patient_id: state.patient_id,
+    });
     const modelWithTools = model.bindTools(appointmentAssistantTools);
 
     const messages = [

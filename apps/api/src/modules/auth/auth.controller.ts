@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { AuthenticatedRequest } from "../../middleware/auth";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../../config/db";
@@ -6,7 +7,7 @@ import { notificationQueue } from "../../config/queue";
 
 export async function signup(req: Request, res: Response, next: NextFunction) {
   try {
-    const { email, password, name, role = "patient" } = req.body;
+    const { email, password, name, role = "patient", phone } = req.body;
 
     const existing = await prisma.profile.findUnique({ where: { email } });
     if (existing) {
@@ -23,6 +24,7 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
           passwordHash,
           name,
           role,
+          phone,
         },
       });
 
@@ -67,6 +69,7 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
         sub: profile.id,
         email: profile.email,
         role: profile.role,
+        name: profile.name,
       },
       secret,
       { expiresIn: "7d" }
@@ -115,6 +118,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
         sub: profile.id,
         email: profile.email,
         role: profile.role,
+        name: profile.name,
       },
       secret,
       { expiresIn: "7d" }
@@ -216,6 +220,93 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
       ok: true,
       data: { message: "Password has been successfully updated" },
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateProfile(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { name, phone } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+
+    const updatedProfile = await prisma.profile.update({
+      where: { id: userId },
+      data: {
+        name,
+        phone
+      }
+    });
+
+    return res.json({
+      ok: true,
+      data: {
+        id: updatedProfile.id,
+        name: updatedProfile.name,
+        email: updatedProfile.email,
+        phone: updatedProfile.phone,
+        role: updatedProfile.role
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getProfile(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+    
+    const profile = await prisma.profile.findUnique({
+      where: { id: userId },
+      include: {
+        patient: true,
+        doctor: true
+      }
+    });
+    
+    if (!profile) {
+      return res.status(404).json({ ok: false, error: "Profile not found" });
+    }
+    
+    return res.json({ ok: true, data: profile });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function changePassword(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+
+    const profile = await prisma.profile.findUnique({ where: { id: userId } });
+    if (!profile) {
+      return res.status(404).json({ ok: false, error: "User not found" });
+    }
+
+    if (!bcrypt.compareSync(currentPassword, profile.passwordHash)) {
+      return res.status(400).json({ ok: false, error: "Current password is incorrect" });
+    }
+
+    const newPasswordHash = bcrypt.hashSync(newPassword, 10);
+    await prisma.profile.update({
+      where: { id: userId },
+      data: { passwordHash: newPasswordHash }
+    });
+
+    return res.json({ ok: true, message: "Password updated successfully" });
   } catch (error) {
     next(error);
   }
