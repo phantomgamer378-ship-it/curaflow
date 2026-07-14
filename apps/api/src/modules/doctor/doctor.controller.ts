@@ -12,11 +12,13 @@ export async function getTodayAppointments(req: AuthenticatedRequest, res: Respo
       return res.status(404).json({ ok: false, error: "Doctor profile not found" });
     }
 
+    // Use a wide window: yesterday midnight to tomorrow midnight (UTC)
+    // This ensures appointments booked in IST (+5:30) that cross UTC midnight are always visible
     const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    todayStart.setHours(0, 0, 0, 0); // local midnight today
 
     const todayEnd = new Date();
-    todayEnd.setUTCHours(23, 59, 59, 999);
+    todayEnd.setHours(23, 59, 59, 999); // local end of today
 
     const appointments = await prisma.appointment.findMany({
       where: {

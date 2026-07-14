@@ -246,28 +246,235 @@ export async function getAnalytics(req: Request, res: Response, next: NextFuncti
   }
 }
 
+export async function getLiveAnalytics(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { clinicId } = req.query;
+    if (!clinicId) return res.status(400).json({ ok: false, error: "Missing clinicId" });
+    
+    const stats = await computeLiveAdminStats(clinicId as string);
+    return res.json({ ok: true, data: stats });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getAuditLogs(req: Request, res: Response, next: NextFunction) {
   try {
-    const limit = parseInt((req.query.limit as string) || "50", 10);
-    const offset = parseInt((req.query.offset as string) || "0", 10);
+    const limit = parseInt((req.query.limit as string) || "25", 10);
+    const cursor = req.query.cursor as string;
+    const { actorId, action, resourceType, dateFrom, dateTo, search, sortBy = "createdAt", sortDir = "desc" } = req.query;
 
-    const [logs, total] = await prisma.$transaction([
-      prisma.auditLog.findMany({
-        orderBy: { createdAt: "desc" },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.auditLog.count(),
-    ]);
+    const where: any = {};
+    if (actorId) where.actorId = actorId;
+    if (action) {
+      where.action = { in: (action as string).split(",") };
+    }
+    if (resourceType) {
+      where.resourceType = { in: (resourceType as string).split(",") };
+    }
+    
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom as string);
+      if (dateTo) where.createdAt.lte = new Date(dateTo as string);
+    }
+
+    if (search) {
+      where.OR = [
+        { action: { contains: search as string } },
+        { resourceType: { contains: search as string } },
+        { profile: { name: { contains: search as string } } }
+      ];
+    }
+
+    const query: any = {
+      where,
+      take: limit + 1, // Fetch one extra to see if there is a next page
+      orderBy: { [sortBy as string]: sortDir === "asc" ? "asc" : "desc" },
+      include: {
+        profile: { select: { name: true, role: true } }
+      }
+    };
+
+    if (cursor) {
+      query.cursor = { id: cursor };
+      query.skip = 1; // Skip the cursor itself
+    }
+
+    const logs = await prisma.auditLog.findMany(query);
+
+    let nextCursor = null;
+    let hasMore = false;
+    
+    if (logs.length > limit) {
+      hasMore = true;
+      const nextItem = logs.pop(); // Remove the extra item
+      if (nextItem) nextCursor = nextItem.id;
+    }
 
     return res.json({
       ok: true,
       data: logs,
-      pagination: { limit, offset, total },
+      pagination: { nextCursor, hasMore },
     });
   } catch (error) {
     next(error);
   }
+}
+
+export async function exportAuditLogs(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { actorId, action, resourceType, dateFrom, dateTo, search } = req.query;
+
+    const where: any = {};
+    if (actorId) where.actorId = actorId;
+    if (action) where.action = { in: (action as string).split(",") };
+    if (resourceType) where.resourceType = { in: (resourceType as string).split(",") };
+    
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom as string);
+      if (dateTo) where.createdAt.lte = new Date(dateTo as string);
+    }
+
+    if (search) {
+      where.OR = [
+        { action: { contains: search as string } },
+        { resourceType: { contains: search as string } },
+        { profile: { name: { contains: search as string } } }
+      ];
+    }
+
+    const logs = await prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: { profile: { select: { name: true, role: true } } }
+    });
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=audit-logs.csv");
+
+    // Super simple CSV generator
+    const headers = ["Timestamp", "Actor", "Role", "Action", "Resource Type", "Resource ID", "Metadata"];
+    const rows = logs.map(l => [
+      l.createdAt.toISOString(),
+      `"${l.profile?.name || 'System'}"`,
+      l.profile?.role || 'system',
+      l.action,
+      l.resourceType,
+      l.resourceId || '',
+      `"${l.metadata.replace(/"/g, '""')}"`
+    ]);
+
+    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    return res.send(csv);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function computeLiveAdminStats(clinicId: string) {
+  // 1. Appointments Today
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const appointmentsToday = await prisma.appointment.count({
+    where: {
+      clinicId,
+      slotTime: { gte: todayStart }
+    }
+  });
+
+  // 2. Patients Waiting Now
+  const patientsWaitingNow = await prisma.queueEntry.count({
+    where: {
+      status: "waiting",
+      appointment: { clinicId }
+    }
+  });
+
+  // 3. Doctors Online
+  const doctorsOnline = await prisma.doctor.count({
+    where: {
+      clinicId,
+      isOnline: true
+    }
+  });
+
+  // 4. No Shows Today
+  const noShowsToday = await prisma.appointment.count({
+    where: {
+      clinicId,
+      status: "no_show",
+      updatedAt: { gte: todayStart }
+    }
+  });
+
+  // 5. Avg Wait Time Today (rough estimate based on checked-in patients minus joined time)
+  // Since we don't have direct SQL `filter` via Prisma, we fetch the completed ones today
+  const completedEntries = await prisma.queueEntry.findMany({
+    where: {
+      status: "completed",
+      checkedInAt: { not: null },
+      updatedAt: { gte: todayStart },
+      appointment: { clinicId }
+    },
+    select: { checkedInAt: true, updatedAt: true }
+  });
+
+  let totalWaitMs = 0;
+  let count = 0;
+  for (const e of completedEntries) {
+    if (e.checkedInAt) {
+      totalWaitMs += (e.updatedAt.getTime() - e.checkedInAt.getTime());
+      count++;
+    }
+  }
+  const avgWaitTimeMinutes = count > 0 ? Math.round(totalWaitMs / count / 60000) : 0;
+
+  // 6. Doctor Performance Table
+  const doctors = await prisma.doctor.findMany({
+    where: { clinicId, deletedAt: null },
+    include: { profile: { select: { name: true } } }
+  });
+
+  // We do separate queries per doctor since Prisma doesn't do complex GROUP BY easily with relational counts
+  const doctorPerformance = await Promise.all(doctors.map(async (doc) => {
+    const patientsSeenToday = await prisma.appointment.count({
+      where: { doctorId: doc.id, status: "completed", updatedAt: { gte: todayStart } }
+    });
+    
+    const docNoShowsToday = await prisma.appointment.count({
+      where: { doctorId: doc.id, status: "no_show", updatedAt: { gte: todayStart } }
+    });
+
+    const docCompletedEntries = await prisma.queueEntry.findMany({
+      where: { status: "completed", checkedInAt: { not: null }, updatedAt: { gte: todayStart }, appointment: { doctorId: doc.id } },
+      select: { checkedInAt: true, updatedAt: true }
+    });
+    let dTotal = 0;
+    for (const e of docCompletedEntries) {
+      if (e.checkedInAt) dTotal += (e.updatedAt.getTime() - e.checkedInAt.getTime());
+    }
+    const avgConsultationMinutes = docCompletedEntries.length > 0 ? Math.round(dTotal / docCompletedEntries.length / 60000) : 0;
+
+    return {
+      doctorId: doc.id,
+      doctorName: doc.profile.name,
+      patientsSeenToday,
+      noShowsToday: docNoShowsToday,
+      avgConsultationMinutes
+    };
+  }));
+
+  return {
+    appointmentsToday,
+    patientsWaitingNow,
+    doctorsOnline,
+    noShowsToday,
+    avgWaitTimeMinutes,
+    doctorPerformance
+  };
 }
 
 export async function createDoctor(req: Request, res: Response, next: NextFunction) {

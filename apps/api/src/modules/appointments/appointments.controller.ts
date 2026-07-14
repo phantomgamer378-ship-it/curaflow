@@ -141,11 +141,12 @@ export async function bookAppointment(req: AuthenticatedRequest, res: Response, 
     }
 
     // Determine Token Number (Sequential count for this doctor for this day)
+    // Use local-timezone midnight to avoid cross-day errors for IST users
     const startOfDay = new Date(slotDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
+    startOfDay.setHours(0, 0, 0, 0);
 
     const endOfDay = new Date(slotDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    endOfDay.setHours(23, 59, 59, 999);
 
     const tokenCount = await prisma.appointment.count({
       where: {
@@ -173,10 +174,14 @@ export async function bookAppointment(req: AuthenticatedRequest, res: Response, 
         },
       });
 
-      // If slotTime is today, auto-join queue
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const slotStr = slotDate.toISOString().slice(0, 10);
-      if (todayStr === slotStr) {
+      // If slotTime is today (local timezone), auto-join queue
+      const nowLocal = new Date();
+      const isSameDay = (
+        slotDate.getFullYear() === nowLocal.getFullYear() &&
+        slotDate.getMonth() === nowLocal.getMonth() &&
+        slotDate.getDate() === nowLocal.getDate()
+      );
+      if (isSameDay) {
         // Look up or create queue session
         let session = await tx.queueSession.findUnique({
           where: {
@@ -232,10 +237,14 @@ export async function bookAppointment(req: AuthenticatedRequest, res: Response, 
       return appt;
     });
 
-    // Broadcast queue update if same-day
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const slotStr = slotDate.toISOString().slice(0, 10);
-    if (todayStr === slotStr) {
+    // Broadcast queue update if same-day (use local dates)
+    const now2 = new Date();
+    const isSameDayBroadcast = (
+      slotDate.getFullYear() === now2.getFullYear() &&
+      slotDate.getMonth() === now2.getMonth() &&
+      slotDate.getDate() === now2.getDate()
+    );
+    if (isSameDayBroadcast) {
       const { getLiveQueueSnapshot } = await import("@clinic/queue");
       const { broadcastQueueUpdate } = await import("../../config/socket");
       const snapshot = await getLiveQueueSnapshot(doctor.clinicId);

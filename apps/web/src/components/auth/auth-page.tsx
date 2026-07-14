@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 type AuthPageProps = {
@@ -34,6 +34,23 @@ export function AuthPage({ mode, redirectTo = "/patient", resetToken = "" }: Aut
   const [touchedConfirm, setTouchedConfirm] = useState(false);
 
   const passwordMismatch = mode === "register" && touchedConfirm && password !== confirmPassword;
+
+  useEffect(() => {
+    if (mode === "verify-email" && resetToken) {
+      setIsLoading(true);
+      import("@/lib/api").then(({ apiFetch }) => {
+        apiFetch(`/api/auth/verify-email?token=${resetToken}`).then((res) => {
+          if (res.ok) {
+            setSuccessMsg("Email successfully verified! Redirecting to login...");
+            setTimeout(() => router.push("/login"), 2000);
+          } else {
+            setError(res.error || "Invalid or expired verification link.");
+          }
+          setIsLoading(false);
+        });
+      });
+    }
+  }, [mode, resetToken, router]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

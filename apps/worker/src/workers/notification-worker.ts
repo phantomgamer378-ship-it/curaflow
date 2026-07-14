@@ -72,6 +72,20 @@ export const notificationWorker = createWorker<any>(
         emailSubject = `It's your turn — please proceed to Dr. ${doctorName}'s room`;
         emailBody = `It's your turn. Dr. ${doctorName} is ready to see you now. Please proceed to the consultation room.`;
         smsBody = `It's your turn! Dr. ${doctorName} is ready for you now.`;
+      } else if (job.name === "send-welcome-email") {
+        const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/verify-email?token=${data.verifyToken}`;
+        emailSubject = `Verify your email to get started`;
+        emailBody = `Welcome to CuraFlow, ${data.name}! Please verify your email by clicking here: ${verifyUrl} (Link expires in 24 hours)`;
+        smsBody = `Welcome to CuraFlow!`;
+      } else if (job.name === "password_reset") {
+        const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${data.resetToken}`;
+        emailSubject = `Reset your password`;
+        emailBody = `You requested a password reset. Click here to reset: ${resetUrl} (Link expires in 15 minutes). If you didn't request this, you can safely ignore this email.`;
+        smsBody = ``;
+      } else if (job.name === "password_changed_confirmation") {
+        emailSubject = `Your password was changed`;
+        emailBody = `Your CuraFlow password has been successfully changed. If this wasn't you, please contact support immediately.`;
+        smsBody = ``;
       }
 
       // Create email notification

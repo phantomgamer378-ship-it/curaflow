@@ -15,6 +15,7 @@ model Profile {
   name         String
   phone        String?
   avatarUrl    String?
+  emailVerifiedAt DateTime?
   deletedAt    DateTime?
   createdAt    DateTime      @default(now())
   
@@ -22,6 +23,8 @@ model Profile {
   doctor        Doctor?
   auditLogs     AuditLog[]
   notifications Notification[]
+  emailTokens   EmailVerificationToken[]
+  resetTokens   PasswordResetToken[]
 
   @@map("profiles")
 }
@@ -230,5 +233,36 @@ model AuditLog {
 
   profile      Profile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@index([actorId])
+  @@index([action])
+  @@index([resourceType, resourceId])
   @@map("audit_logs")
+}
+
+model EmailVerificationToken {
+  id         String   @id @default(uuid())
+  profileId  String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String   @id @default(uuid())
+  profileId  String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }

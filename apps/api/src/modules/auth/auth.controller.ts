@@ -4,6 +4,16 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../../config/db";
 import { notificationQueue } from "../../config/queue";
+import { generateToken, hashToken } from "./crypto";
+import { OAuth2Client } from "google-auth-library";
+
+function getGoogleClient() {
+  return new OAuth2Client(
+    process.env.GOOGLE_OAUTH_CLIENT_ID,
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+    process.env.GOOGLE_CALLBACK_URL || "http://localhost:4000/api/auth/google/callback"
+  );
+}
 
 export async function signup(req: Request, res: Response, next: NextFunction) {
   try {
@@ -49,11 +59,23 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
       return newProfile;
     });
 
+    const { raw: verifyTokenRaw, hash: verifyTokenHash } = generateToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await prisma.emailVerificationToken.create({
+      data: {
+        profileId: profile.id,
+        tokenHash: verifyTokenHash,
+        expiresAt,
+      }
+    });
+
     // Queue registration notification
     await notificationQueue.add("send-welcome-email", {
       userId: profile.id,
       email: profile.email,
       name: profile.name,
+      verifyToken: verifyTokenRaw,
     });
 
     let redirectTo = "/patient";
@@ -171,17 +193,28 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
     const profile = await prisma.profile.findUnique({ where: { email } });
 
     if (profile) {
-      // In a full implementation we would generate a reset token and write it to Redis or DB
-      const resetToken = jwt.sign(
-        { sub: profile.id, action: "password_reset" },
-        process.env.JWT_SECRET || "fallback_default_jwt_secret_key_change_me_in_prod",
-        { expiresIn: "1h" }
-      );
+      // Invalidate existing active tokens
+      await prisma.passwordResetToken.updateMany({
+        where: { profileId: profile.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
 
-      await notificationQueue.add("send-password-reset", {
+      const { raw: resetTokenRaw, hash: resetTokenHash } = generateToken();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+      
+      await prisma.passwordResetToken.create({
+        data: {
+          profileId: profile.id,
+          tokenHash: resetTokenHash,
+          expiresAt,
+          ip: req.ip,
+        }
+      });
+
+      await notificationQueue.add("password_reset", {
         userId: profile.id,
         email: profile.email,
-        resetToken,
+        resetToken: resetTokenRaw,
       });
     }
 
@@ -197,23 +230,31 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
 export async function resetPassword(req: Request, res: Response, next: NextFunction) {
   try {
     const { token, password } = req.body;
-    const secret = process.env.JWT_SECRET || "fallback_default_jwt_secret_key_change_me_in_prod";
+    const tokenHash = hashToken(token);
+    const resetTokenRecord = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash }
+    });
 
-    let payload: any;
-    try {
-      payload = jwt.verify(token, secret);
-    } catch (err) {
+    if (!resetTokenRecord || resetTokenRecord.usedAt || resetTokenRecord.expiresAt < new Date()) {
       return res.status(400).json({ ok: false, error: "Invalid or expired reset token" });
     }
 
-    if (payload.action !== "password_reset") {
-      return res.status(400).json({ ok: false, error: "Invalid token usage" });
-    }
-
     const passwordHash = bcrypt.hashSync(password, 10);
-    await prisma.profile.update({
-      where: { id: payload.sub },
-      data: { passwordHash },
+    
+    await prisma.$transaction(async (tx) => {
+      await tx.profile.update({
+        where: { id: resetTokenRecord.profileId },
+        data: { passwordHash },
+      });
+
+      await tx.passwordResetToken.update({
+        where: { id: resetTokenRecord.id },
+        data: { usedAt: new Date() }
+      });
+    });
+
+    await notificationQueue.add("password_changed_confirmation", {
+      userId: resetTokenRecord.profileId,
     });
 
     return res.json({
@@ -316,17 +357,19 @@ export async function googleLogin(req: Request, res: Response, next: NextFunctio
   try {
     const { next: redirectTo } = req.body;
     
-    // In a real implementation, we would construct the Google OAuth URL using google-auth-library
-    // Since we don't have real credentials, we'll simulate the OAuth flow by redirecting to our own callback
-    const callbackUrl = `http://localhost:4000/api/auth/google/callback?state=${encodeURIComponent(redirectTo || '/patient')}`;
-    
-    // Simulate external redirect
-    return res.status(200).json({
-      ok: true,
-      data: {
-        url: callbackUrl
-      }
+    if (!process.env.GOOGLE_OAUTH_CLIENT_ID) {
+      return res.status(500).json({ ok: false, error: "Google OAuth is not configured on the server." });
+    }
+
+    const googleClient = getGoogleClient();
+    const url = googleClient.generateAuthUrl({
+      access_type: "offline",
+      scope: ["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
+      state: encodeURIComponent(redirectTo || "/patient"),
+      redirect_uri: process.env.GOOGLE_CALLBACK_URL || "http://localhost:4000/api/auth/google/callback"
     });
+    
+    return res.status(200).json({ ok: true, data: { url } });
   } catch (error) {
     next(error);
   }
@@ -334,35 +377,56 @@ export async function googleLogin(req: Request, res: Response, next: NextFunctio
 
 export async function googleCallback(req: Request, res: Response, next: NextFunction) {
   try {
-    const { state } = req.query;
+    const { code, state, error: authError } = req.query;
     const redirectTo = state ? decodeURIComponent(state as string) : '/patient';
     
-    // Mock user data from "Google"
-    const mockGoogleUser = {
-      email: "demo.google@example.com",
-      name: "Google Demo User",
-      role: "patient",
-    };
+    if (authError) {
+      return res.status(400).send(`Authentication failed: ${authError}`);
+    }
 
-    let profile = await prisma.profile.findUnique({ where: { email: mockGoogleUser.email } });
+    if (!code) {
+      return res.status(400).send("No authorization code provided.");
+    }
+
+    // Exchange code for tokens
+    const googleClient = getGoogleClient();
+    const { tokens } = await googleClient.getToken({
+      code: code as string,
+      redirect_uri: process.env.GOOGLE_CALLBACK_URL || "http://localhost:4000/api/auth/google/callback"
+    });
+    googleClient.setCredentials(tokens);
+    
+    // Verify ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: tokens.id_token!,
+      audience: process.env.GOOGLE_OAUTH_CLIENT_ID
+    });
+    
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      return res.status(400).send("Invalid Google account data.");
+    }
+
+    const email = payload.email;
+    const name = payload.name || "Google User";
+
+    let profile = await prisma.profile.findUnique({ where: { email } });
     
     if (!profile) {
-      // Create user if doesn't exist
       profile = await prisma.$transaction(async (tx) => {
         const newProfile = await tx.profile.create({
           data: {
-            email: mockGoogleUser.email,
-            passwordHash: bcrypt.hashSync("google_oauth_dummy_password", 10),
-            name: mockGoogleUser.name,
+            email,
+            passwordHash: bcrypt.hashSync(crypto.randomUUID(), 10), // Random dummy password
+            name,
             role: "patient",
             phone: "",
+            emailVerifiedAt: new Date() // Pre-verified via Google
           },
         });
 
         await tx.patient.create({
-          data: {
-            profileId: newProfile.id,
-          },
+          data: { profileId: newProfile.id },
         });
 
         return newProfile;
@@ -381,31 +445,84 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
       { expiresIn: "7d" }
     );
 
-    // Redirect back to the frontend with the token in the URL hash or query, or set a cookie.
-    // For a seamless cross-domain auth, we should redirect to a frontend page that reads the token and sets it.
-    // Since the frontend is at http://localhost:3000, we'll redirect to a generic page or directly set the cookie if on same domain.
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3003";
     
-    // For local dev, frontend is on 3000 and backend on 4000.
-    // Setting a cookie here might not work cross-port unless domain is explicitly handled.
-    // We can redirect to the frontend with the token in query params, and let the frontend save it.
+    res.cookie("authToken", token, {
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     
-    // BUT we don't have a frontend callback route.
-    // Let's redirect to a frontend helper or the login page with the token.
-    const frontendUrl = process.env.ALLOWED_ORIGINS?.split(',')[0] || "http://localhost:3000";
-    
-    // The easiest way is to redirect to /login with a magic query param, or create a quick html page that sets the cookie and redirects.
-    res.send(`
-      <html>
-        <body>
-          <p>Logging you in...</p>
-          <script>
-            // Set cookie for Next.js frontend
-            document.cookie = "authToken=${token}; path=/; max-age=${7 * 24 * 60 * 60}";
-            window.location.href = "${frontendUrl}${redirectTo}";
-          </script>
-        </body>
-      </html>
-    `);
+    return res.redirect(`${frontendUrl}${redirectTo}`);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function verifyEmail(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = req.query.token as string;
+    if (!token) return res.status(400).json({ ok: false, error: "Token is required" });
+
+    const tokenHash = hashToken(token);
+    const verificationRecord = await prisma.emailVerificationToken.findUnique({
+      where: { tokenHash }
+    });
+
+    if (!verificationRecord || verificationRecord.usedAt || verificationRecord.expiresAt < new Date()) {
+      return res.status(400).json({ ok: false, error: "Invalid or expired verification link" });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.profile.update({
+        where: { id: verificationRecord.profileId },
+        data: { emailVerifiedAt: new Date() }
+      });
+      await tx.emailVerificationToken.update({
+        where: { id: verificationRecord.id },
+        data: { usedAt: new Date() }
+      });
+    });
+
+    return res.json({ ok: true, data: { message: "Email verified successfully" } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function resendVerification(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "Unauthorized" });
+
+    const profile = await prisma.profile.findUnique({ where: { id: userId } });
+    if (!profile) return res.status(404).json({ ok: false, error: "User not found" });
+    if (profile.emailVerifiedAt) return res.status(400).json({ ok: false, error: "Email is already verified" });
+
+    // Invalidate existing unused tokens
+    await prisma.emailVerificationToken.updateMany({
+      where: { profileId: userId, usedAt: null },
+      data: { usedAt: new Date() }
+    });
+
+    const { raw: verifyTokenRaw, hash: verifyTokenHash } = generateToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await prisma.emailVerificationToken.create({
+      data: {
+        profileId: userId,
+        tokenHash: verifyTokenHash,
+        expiresAt,
+      }
+    });
+
+    await notificationQueue.add("send-welcome-email", {
+      userId: profile.id,
+      email: profile.email,
+      name: profile.name,
+      verifyToken: verifyTokenRaw,
+    });
+
+    return res.json({ ok: true, data: { message: "Verification email sent" } });
   } catch (error) {
     next(error);
   }

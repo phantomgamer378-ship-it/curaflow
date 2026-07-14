@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { signup, login, logout, forgotPassword, resetPassword, updateProfile, getProfile, changePassword, googleLogin, googleCallback } from "./auth.controller";
+import { signup, login, logout, forgotPassword, resetPassword, updateProfile, getProfile, changePassword, googleLogin, googleCallback, verifyEmail, resendVerification } from "./auth.controller";
 import { validate } from "../../middleware/validate";
 import { requireAuth } from "../../middleware/auth";
 import { signupInputSchema, loginInputSchema, forgotPasswordInputSchema, resetPasswordInputSchema } from "@clinic/types";
@@ -11,6 +11,8 @@ router.post("/login", validate(loginInputSchema), login);
 router.post("/logout", logout);
 router.post("/forgot-password", validate(forgotPasswordInputSchema), forgotPassword);
 router.post("/reset-password", validate(resetPasswordInputSchema), resetPassword);
+router.get("/verify-email", verifyEmail);
+router.post("/resend-verification", requireAuth, resendVerification);
 
 // Google OAuth
 router.post("/google", googleLogin);

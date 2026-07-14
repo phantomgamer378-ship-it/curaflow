@@ -4,7 +4,9 @@ import {
   getDoctors,
   getAppointmentsAdmin,
   getAnalytics,
+  getLiveAnalytics,
   getAuditLogs,
+  exportAuditLogs,
   createDoctor,
   updateAvailability,
   addHoliday,
@@ -35,7 +37,9 @@ router.get("/patients", getPatients);
 router.get("/doctors", getDoctors);
 router.get("/appointments", getAppointmentsAdmin);
 router.get("/analytics", getAnalytics);
+router.get("/analytics/live", getLiveAnalytics);
 router.get("/audit-logs", getAuditLogs);
+router.get("/audit-logs/export", exportAuditLogs);
 
 router.post(
   "/doctors",

@@ -9,8 +9,9 @@ import {
   startQueueSession,
   joinQueue,
 } from "@clinic/queue";
-import { broadcastQueueUpdate } from "../../config/socket";
+import { broadcastQueueUpdate, broadcastAdminStatsUpdate } from "../../config/socket";
 import { aiQueue, queueQueue, notificationQueue } from "../../config/queue";
+import { computeLiveAdminStats } from "../admin/admin.controller";
 
 export async function getQueueStatus(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -55,6 +56,9 @@ export async function startConsult(req: AuthenticatedRequest, res: Response, nex
 
     const snapshot = await getLiveQueueSnapshot(appointment.clinicId);
     broadcastQueueUpdate(appointment.clinicId, snapshot);
+
+    const adminStats = await computeLiveAdminStats(appointment.clinicId);
+    broadcastAdminStatsUpdate(appointment.clinicId, adminStats);
 
     await notificationQueue.add("being_called", {
       appointmentId: appointment.id,
@@ -115,6 +119,9 @@ export async function completeConsult(req: AuthenticatedRequest, res: Response, 
     // Broadcast queue update instantly to all screens (TVs, patients)
     broadcastQueueUpdate(appointment.clinicId, snapshot);
 
+    const adminStats = await computeLiveAdminStats(appointment.clinicId);
+    broadcastAdminStatsUpdate(appointment.clinicId, adminStats);
+
     await queueQueue.add("recalc-and-notify", {
       doctorId: appointment.doctorId,
       clinicId: appointment.clinicId,
@@ -163,6 +170,9 @@ export async function markConsultNoShow(req: AuthenticatedRequest, res: Response
 
     broadcastQueueUpdate(appointment.clinicId, snapshot);
 
+    const adminStats = await computeLiveAdminStats(appointment.clinicId);
+    broadcastAdminStatsUpdate(appointment.clinicId, adminStats);
+
     await queueQueue.add("recalc-and-notify", {
       doctorId: appointment.doctorId,
       clinicId: appointment.clinicId,
@@ -186,6 +196,9 @@ export async function startSession(req: AuthenticatedRequest, res: Response, nex
 
     const snapshot = await startQueueSession(doctor.id, doctor.clinicId);
     broadcastQueueUpdate(doctor.clinicId, snapshot);
+
+    const adminStats = await computeLiveAdminStats(doctor.clinicId);
+    broadcastAdminStatsUpdate(doctor.clinicId, adminStats);
 
     return res.json({ ok: true, data: snapshot });
   } catch (error) {
@@ -216,6 +229,9 @@ export async function patientJoinQueue(req: AuthenticatedRequest, res: Response,
 
     const snapshot = await joinQueue(appointment.id, appointment.doctorId, appointment.clinicId);
     broadcastQueueUpdate(appointment.clinicId, snapshot);
+
+    const adminStats = await computeLiveAdminStats(appointment.clinicId);
+    broadcastAdminStatsUpdate(appointment.clinicId, adminStats);
 
     return res.json({ ok: true, data: snapshot });
   } catch (error) {
@@ -248,6 +264,9 @@ export async function skipConsult(req: AuthenticatedRequest, res: Response, next
 
     // Broadcast queue update instantly to all screens (TVs, patients)
     broadcastQueueUpdate(appointment.clinicId, snapshot);
+
+    const adminStats = await computeLiveAdminStats(appointment.clinicId);
+    broadcastAdminStatsUpdate(appointment.clinicId, adminStats);
 
     await queueQueue.add("recalc-and-notify", {
       doctorId: doctor.id,
