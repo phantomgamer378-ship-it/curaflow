@@ -23,10 +23,6 @@ export function initSockets(server: HttpServer) {
       try {
         const payload = JSON.parse(message);
         if (payload.type === "admin_stats") {
-          const { clinicId } = payload;
-          const { computeLiveAdminStats } = await import("@clinic/admin"); // We need to export it or just call the API controller.
-          // Wait, importing the controller from here creates a circular dependency or it's cleaner to just fetch it or pass it.
-          // Actually, since this is for cross-process, we can just pass the stats in the message to avoid re-computing!
           const { clinicId: cId, stats } = payload;
           getIO().to(`clinic:${cId}`).emit("admin_stats_updated", stats);
         } else {

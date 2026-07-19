@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../config/db";
+import { getClinicDayRange } from "@clinic/queue";
 
 export async function getPatients(req: Request, res: Response, next: NextFunction) {
   try {
@@ -160,10 +161,7 @@ export async function getAppointmentsAdmin(req: Request, res: Response, next: Ne
 
 export async function getAnalytics(req: Request, res: Response, next: NextFunction) {
   try {
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setUTCHours(23, 59, 59, 999);
+    const today = getClinicDayRange();
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -171,7 +169,7 @@ export async function getAnalytics(req: Request, res: Response, next: NextFuncti
     // 1. Total & Today Appointments
     const totalAppointments = await prisma.appointment.count();
     const appointmentsToday = await prisma.appointment.count({
-      where: { slotTime: { gte: todayStart, lte: todayEnd } }
+      where: { slotTime: { gte: today.start, lte: today.end } }
     });
 
     // 2. Doctors Online
@@ -375,13 +373,13 @@ export async function exportAuditLogs(req: Request, res: Response, next: NextFun
 
 export async function computeLiveAdminStats(clinicId: string) {
   // 1. Appointments Today
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const today = getClinicDayRange();
+  const todayStart = today.start;
 
   const appointmentsToday = await prisma.appointment.count({
     where: {
       clinicId,
-      slotTime: { gte: todayStart }
+      slotTime: { gte: today.start, lte: today.end }
     }
   });
 
@@ -410,23 +408,25 @@ export async function computeLiveAdminStats(clinicId: string) {
     }
   });
 
-  // 5. Avg Wait Time Today (rough estimate based on checked-in patients minus joined time)
-  // Since we don't have direct SQL `filter` via Prisma, we fetch the completed ones today
-  const completedEntries = await prisma.queueEntry.findMany({
+  // 5. Avg Wait Time Today based on appointment completion time minus queue check-in time.
+  const completedAppointments = await prisma.appointment.findMany({
     where: {
+      clinicId,
       status: "completed",
-      checkedInAt: { not: null },
       updatedAt: { gte: todayStart },
-      appointment: { clinicId }
     },
-    select: { checkedInAt: true, updatedAt: true }
+    select: {
+      updatedAt: true,
+      queueEntry: { select: { checkedInAt: true } },
+    },
   });
 
   let totalWaitMs = 0;
   let count = 0;
-  for (const e of completedEntries) {
-    if (e.checkedInAt) {
-      totalWaitMs += (e.updatedAt.getTime() - e.checkedInAt.getTime());
+  for (const appointment of completedAppointments) {
+    const checkedInAt = appointment.queueEntry?.checkedInAt;
+    if (checkedInAt) {
+      totalWaitMs += appointment.updatedAt.getTime() - checkedInAt.getTime();
       count++;
     }
   }
@@ -448,15 +448,27 @@ export async function computeLiveAdminStats(clinicId: string) {
       where: { doctorId: doc.id, status: "no_show", updatedAt: { gte: todayStart } }
     });
 
-    const docCompletedEntries = await prisma.queueEntry.findMany({
-      where: { status: "completed", checkedInAt: { not: null }, updatedAt: { gte: todayStart }, appointment: { doctorId: doc.id } },
-      select: { checkedInAt: true, updatedAt: true }
+    const docCompletedAppointments = await prisma.appointment.findMany({
+      where: { 
+        doctorId: doc.id,
+        status: "completed", 
+        updatedAt: { gte: todayStart },
+      },
+      select: {
+        updatedAt: true,
+        queueEntry: { select: { checkedInAt: true } },
+      },
     });
     let dTotal = 0;
-    for (const e of docCompletedEntries) {
-      if (e.checkedInAt) dTotal += (e.updatedAt.getTime() - e.checkedInAt.getTime());
+    let dCount = 0;
+    for (const appointment of docCompletedAppointments) {
+      const checkedInAt = appointment.queueEntry?.checkedInAt;
+      if (checkedInAt) {
+        dTotal += appointment.updatedAt.getTime() - checkedInAt.getTime();
+        dCount++;
+      }
     }
-    const avgConsultationMinutes = docCompletedEntries.length > 0 ? Math.round(dTotal / docCompletedEntries.length / 60000) : 0;
+    const avgConsultationMinutes = dCount > 0 ? Math.round(dTotal / dCount / 60000) : 0;
 
     return {
       doctorId: doc.id,
@@ -610,19 +622,14 @@ export async function adminAddQueueEntry(req: Request, res: Response, next: Next
     if (!doctor) return res.status(400).json({ ok: false, error: "Doctor not found" });
 
     const slotDate = slotTime ? new Date(slotTime) : new Date();
-
-    const startOfDay = new Date(slotDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(slotDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    const slotDay = getClinicDayRange(slotDate);
 
     const tokenCount = await prisma.appointment.count({
       where: {
         doctorId,
         slotTime: {
-          gte: startOfDay,
-          lte: endOfDay,
+          gte: slotDay.start,
+          lte: slotDay.end,
         },
         status: { notIn: ["cancelled", "no_show"] },
       },
@@ -647,7 +654,7 @@ export async function adminAddQueueEntry(req: Request, res: Response, next: Next
         where: {
           doctorId_sessionDate: {
             doctorId,
-            sessionDate: startOfDay,
+            sessionDate: slotDay.sessionDate,
           }
         }
       });
@@ -656,7 +663,7 @@ export async function adminAddQueueEntry(req: Request, res: Response, next: Next
         session = await tx.queueSession.create({
           data: {
             doctorId,
-            sessionDate: startOfDay,
+            sessionDate: slotDay.sessionDate,
             status: doctor.isOnline ? "active" : "not_started",
             currentToken: 0
           }
@@ -748,15 +755,14 @@ export async function adminEditQueueEntry(req: Request, res: Response, next: Nex
         const newDoctor = await tx.doctor.findUnique({ where: { id: doctorId } });
         if (!newDoctor) throw new Error("Target doctor not found");
 
-        const startOfDay = new Date(entry.session.sessionDate);
-        startOfDay.setUTCHours(0, 0, 0, 0);
+        const sessionDate = entry.session.sessionDate;
 
         // Find or create target doctor session
         let newSession = await tx.queueSession.findUnique({
           where: {
             doctorId_sessionDate: {
               doctorId,
-              sessionDate: startOfDay,
+              sessionDate,
             }
           }
         });
@@ -765,7 +771,7 @@ export async function adminEditQueueEntry(req: Request, res: Response, next: Nex
           newSession = await tx.queueSession.create({
             data: {
               doctorId,
-              sessionDate: startOfDay,
+              sessionDate,
               status: newDoctor.isOnline ? "active" : "not_started",
               currentToken: 0
             }

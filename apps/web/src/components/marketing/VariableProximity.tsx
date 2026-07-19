@@ -73,16 +73,18 @@ const VariableProximity = forwardRef<HTMLSpanElement, VariableProximityProps>((p
   const lastPositionRef = useRef({ x: -1, y: -1 });
 
   const parsedSettings = useMemo(() => {
-    const parseSettings = (settingsStr: string) =>
-      new Map(
-        settingsStr
-          .split(',')
-          .map(s => s.trim())
-          .map(s => {
-            const [name, value] = s.split(' ');
-            return [name.replace(/['"]/g, ''), parseFloat(value)] as [string, number];
-          })
-      );
+    const parseSettings = (settingsStr: string) => {
+      const entries = settingsStr
+        .split(',')
+        .map(s => s.trim())
+        .flatMap(s => {
+          const [name, value] = s.split(/\s+/);
+          if (!name || value === undefined) return [];
+          return [[name.replace(/['"]/g, ''), parseFloat(value)] as [string, number]];
+        });
+
+      return new Map(entries);
+    };
 
     const fromSettings = parseSettings(fromFontVariationSettings);
     const toSettings = parseSettings(toFontVariationSettings);

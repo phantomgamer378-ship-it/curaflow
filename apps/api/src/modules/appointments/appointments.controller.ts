@@ -2,6 +2,7 @@ import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { prisma } from "../../config/db";
 import { notificationQueue } from "../../config/queue";
+import { getClinicDayRange, isSameClinicDay } from "@clinic/queue";
 
 export async function getAvailableDoctors(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -140,20 +141,14 @@ export async function bookAppointment(req: AuthenticatedRequest, res: Response, 
       return res.status(400).json({ ok: false, error: "This slot is already booked" });
     }
 
-    // Determine Token Number (Sequential count for this doctor for this day)
-    // Use local-timezone midnight to avoid cross-day errors for IST users
-    const startOfDay = new Date(slotDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(slotDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const slotDay = getClinicDayRange(slotDate);
 
     const tokenCount = await prisma.appointment.count({
       where: {
         doctorId,
         slotTime: {
-          gte: startOfDay,
-          lte: endOfDay,
+          gte: slotDay.start,
+          lte: slotDay.end,
         },
         status: { notIn: ["cancelled", "no_show"] },
       },
@@ -174,20 +169,13 @@ export async function bookAppointment(req: AuthenticatedRequest, res: Response, 
         },
       });
 
-      // If slotTime is today (local timezone), auto-join queue
-      const nowLocal = new Date();
-      const isSameDay = (
-        slotDate.getFullYear() === nowLocal.getFullYear() &&
-        slotDate.getMonth() === nowLocal.getMonth() &&
-        slotDate.getDate() === nowLocal.getDate()
-      );
-      if (isSameDay) {
+      if (isSameClinicDay(slotDate)) {
         // Look up or create queue session
         let session = await tx.queueSession.findUnique({
           where: {
             doctorId_sessionDate: {
               doctorId,
-              sessionDate: startOfDay,
+              sessionDate: slotDay.sessionDate,
             }
           }
         });
@@ -196,7 +184,7 @@ export async function bookAppointment(req: AuthenticatedRequest, res: Response, 
           session = await tx.queueSession.create({
             data: {
               doctorId,
-              sessionDate: startOfDay,
+              sessionDate: slotDay.sessionDate,
               status: doctor.isOnline ? "active" : "not_started",
               currentToken: 0
             }
@@ -237,14 +225,7 @@ export async function bookAppointment(req: AuthenticatedRequest, res: Response, 
       return appt;
     });
 
-    // Broadcast queue update if same-day (use local dates)
-    const now2 = new Date();
-    const isSameDayBroadcast = (
-      slotDate.getFullYear() === now2.getFullYear() &&
-      slotDate.getMonth() === now2.getMonth() &&
-      slotDate.getDate() === now2.getDate()
-    );
-    if (isSameDayBroadcast) {
+    if (isSameClinicDay(slotDate)) {
       const { getLiveQueueSnapshot } = await import("@clinic/queue");
       const { broadcastQueueUpdate } = await import("../../config/socket");
       const snapshot = await getLiveQueueSnapshot(doctor.clinicId);

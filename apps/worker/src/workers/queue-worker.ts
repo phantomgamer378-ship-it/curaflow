@@ -1,6 +1,7 @@
 import { createWorker } from "../lib/queue-setup";
 import { createLogger } from "@clinic/observability";
 import { prisma } from "@clinic/db";
+import { getClinicDayRange, getClinicSessionDateForDate } from "@clinic/queue";
 
 const logger = createLogger("queue-worker");
 
@@ -10,21 +11,14 @@ export const queueWorker = createWorker<any>(
     logger.info(`Running queue worker job: ${job.name}`);
 
     if (job.name === "activate-daily-queue") {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const todayDate = new Date(todayStr);
-
-      const startOfDay = new Date(todayDate);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-
-      const endOfDay = new Date(todayDate);
-      endOfDay.setUTCHours(23, 59, 59, 999);
+      const today = getClinicDayRange();
 
       // Find all appointments where slotTime's date is today and status='booked' with no matching queue entry.
       const appointments = await prisma.appointment.findMany({
         where: {
           slotTime: {
-            gte: startOfDay,
-            lte: endOfDay,
+            gte: today.start,
+            lte: today.end,
           },
           status: "booked",
           queueEntry: { is: null }
@@ -62,7 +56,7 @@ export const queueWorker = createWorker<any>(
             where: {
               doctorId_sessionDate: {
                 doctorId,
-                sessionDate: startOfDay,
+                sessionDate: today.sessionDate,
               }
             }
           });
@@ -71,7 +65,7 @@ export const queueWorker = createWorker<any>(
             session = await tx.queueSession.create({
               data: {
                 doctorId,
-                sessionDate: startOfDay,
+                sessionDate: today.sessionDate,
                 status: doctor.isOnline ? "active" : "not_started",
                 currentToken: 0
               }
@@ -127,8 +121,7 @@ export const queueWorker = createWorker<any>(
       const { doctorId, clinicId } = job.data;
       if (!doctorId || !clinicId) return;
 
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const todayDate = new Date(todayStr);
+      const todayDate = getClinicSessionDateForDate();
 
       const session = await prisma.queueSession.findFirst({
         where: { doctorId, sessionDate: todayDate }
@@ -152,7 +145,8 @@ export const queueWorker = createWorker<any>(
         }
       });
 
-      const { notificationQueue } = await import("../../lib/queue-setup");
+      const { notificationQueue } = await import("../lib/queue-setup");
+      const notificationJobs = notificationQueue.get();
 
       for (const entry of waitingEntries) {
         const patientsAhead = waitingEntries.filter(e => e.position < entry.position).length;
@@ -172,7 +166,7 @@ export const queueWorker = createWorker<any>(
               payload: JSON.stringify({ appointmentId: entry.appointmentId })
             }
           });
-          await notificationQueue.add("getting_close", {
+          await notificationJobs.add("getting_close", {
             appointmentId: entry.appointmentId,
             patientsAhead
           });
@@ -186,7 +180,7 @@ export const queueWorker = createWorker<any>(
               payload: JSON.stringify({ appointmentId: entry.appointmentId })
             }
           });
-          await notificationQueue.add("you_are_next", {
+          await notificationJobs.add("you_are_next", {
             appointmentId: entry.appointmentId
           });
         }
@@ -210,7 +204,8 @@ export const queueWorker = createWorker<any>(
         }
       });
 
-      const { notificationQueue } = await import("../../lib/queue-setup");
+      const { notificationQueue } = await import("../lib/queue-setup");
+      const notificationJobs = notificationQueue.get();
 
       for (const appt of appointments) {
         // Check if we've already sent a reminder (we can use an audit log or a simple check)
@@ -261,7 +256,7 @@ export const queueWorker = createWorker<any>(
               resourceId: appt.id
             }
           });
-          await notificationQueue.add("24h_reminder", {
+          await notificationJobs.add("24h_reminder", {
             appointmentId: appt.id
           });
         }

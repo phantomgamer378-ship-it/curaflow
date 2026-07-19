@@ -1,5 +1,8 @@
 import { prisma } from "@clinic/db";
 import type { PublicQueueSnapshot } from "@clinic/types";
+import { getClinicSessionDateForDate } from "./clinic-date";
+
+export * from "./clinic-date";
 
 export type QueueTransaction = {
   appointmentId: string;
@@ -8,8 +11,7 @@ export type QueueTransaction = {
 };
 
 export async function getLiveQueueSnapshot(clinicId: string): Promise<PublicQueueSnapshot> {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayDate = new Date(todayStr);
+  const todayDate = getClinicSessionDateForDate();
 
   const doctors = await prisma.doctor.findMany({
     where: { clinicId, deletedAt: null },
@@ -50,8 +52,7 @@ export async function getLiveQueueSnapshot(clinicId: string): Promise<PublicQueu
 }
 
 async function getOrCreateSession(doctorId: string) {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayDate = new Date(todayStr);
+  const todayDate = getClinicSessionDateForDate();
 
   const session = await prisma.queueSession.findFirst({
     where: { doctorId, sessionDate: todayDate }
@@ -73,12 +74,7 @@ export async function startConsultation(input: QueueTransaction): Promise<void> 
       data: { status: "in_consultation" }
     }),
     prisma.queueEntry.upsert({
-      where: {
-        sessionId_appointmentId: {
-          sessionId: session.id,
-          appointmentId: input.appointmentId
-        }
-      },
+      where: { appointmentId: input.appointmentId },
       create: {
         sessionId: session.id,
         appointmentId: input.appointmentId,
@@ -109,12 +105,7 @@ export async function markPatientDone(input: QueueTransaction): Promise<PublicQu
       data: { status: "completed" }
     }),
     prisma.queueEntry.upsert({
-      where: {
-        sessionId_appointmentId: {
-          sessionId: session.id,
-          appointmentId: input.appointmentId
-        }
-      },
+      where: { appointmentId: input.appointmentId },
       create: {
         sessionId: session.id,
         appointmentId: input.appointmentId,
@@ -151,12 +142,7 @@ export async function markNoShow(input: QueueTransaction): Promise<PublicQueueSn
       data: { status: "no_show" }
     }),
     prisma.queueEntry.upsert({
-      where: {
-        sessionId_appointmentId: {
-          sessionId: session.id,
-          appointmentId: input.appointmentId
-        }
-      },
+      where: { appointmentId: input.appointmentId },
       create: {
         sessionId: session.id,
         appointmentId: input.appointmentId,
@@ -181,8 +167,7 @@ export async function markNoShow(input: QueueTransaction): Promise<PublicQueueSn
 }
 
 export async function startQueueSession(doctorId: string, clinicId: string): Promise<PublicQueueSnapshot> {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayDate = new Date(todayStr);
+  const todayDate = getClinicSessionDateForDate();
 
   const existingSession = await prisma.queueSession.findFirst({
     where: { doctorId, sessionDate: todayDate }
@@ -200,8 +185,7 @@ export async function startQueueSession(doctorId: string, clinicId: string): Pro
 }
 
 export async function joinQueue(appointmentId: string, doctorId: string, clinicId: string): Promise<PublicQueueSnapshot> {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayDate = new Date(todayStr);
+  const todayDate = getClinicSessionDateForDate();
 
   const session = await prisma.queueSession.findFirst({
     where: { doctorId, sessionDate: todayDate }
@@ -212,7 +196,7 @@ export async function joinQueue(appointmentId: string, doctorId: string, clinicI
   }
 
   const existingEntry = await prisma.queueEntry.findUnique({
-    where: { sessionId_appointmentId: { sessionId: session.id, appointmentId } }
+    where: { appointmentId }
   });
 
   if (existingEntry) {
@@ -245,8 +229,7 @@ export async function joinQueue(appointmentId: string, doctorId: string, clinicI
 }
 
 export async function skipPatient(appointmentId: string, doctorId: string, clinicId: string): Promise<PublicQueueSnapshot> {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayDate = new Date(todayStr);
+  const todayDate = getClinicSessionDateForDate();
 
   const session = await prisma.queueSession.findFirst({
     where: { doctorId, sessionDate: todayDate }

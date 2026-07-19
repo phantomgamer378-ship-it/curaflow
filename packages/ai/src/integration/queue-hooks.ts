@@ -1,4 +1,4 @@
-import { getLiveQueueSnapshot } from "@clinic/queue";
+import { getClinicDayRange, getClinicSessionDateForDate, getLiveQueueSnapshot } from "@clinic/queue";
 import { prisma } from "@clinic/db";
 
 /**
@@ -11,8 +11,7 @@ export async function getCurrentQueueSnapshot(clinicId: string) {
 }
 
 export async function getAverageWaitTime(clinicId: string, doctorId?: string) {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayDate = new Date(todayStr);
+  const todayDate = getClinicSessionDateForDate();
 
   const whereClause: any = {
     sessionDate: todayDate,
@@ -52,13 +51,13 @@ export async function getAverageWaitTime(clinicId: string, doctorId?: string) {
 }
 
 export async function getQueuePositionForPatient(clinicId: string, patientId: string) {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const today = getClinicDayRange();
 
   const appointment = await prisma.appointment.findFirst({
     where: {
       patientId,
       clinicId,
-      slotTime: { gte: new Date(todayStr) },
+      slotTime: { gte: today.start, lte: today.end },
       status: { in: ["booked", "in_consultation"] },
     },
     include: { queueEntry: true },

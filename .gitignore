@@ -13,3 +13,6 @@ test-results
 *.tsbuildinfo
 
 testsprite_tests/tmp/config.json
+
+# Local scratch scripts that can contain development secrets or generated tokens.
+apps/api/test-auth.ts

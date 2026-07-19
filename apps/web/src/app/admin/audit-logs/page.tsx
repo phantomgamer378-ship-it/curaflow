@@ -7,8 +7,32 @@ import {
   ChevronDown, ChevronRight, Filter, ChevronLeft
 } from "lucide-react";
 
+interface AuditLogProfile {
+  name?: string | null;
+  role?: string | null;
+}
+
+interface AuditLogEntry {
+  id: string;
+  action: string;
+  resourceType: string;
+  resourceId?: string | null;
+  metadata?: string | null;
+  createdAt: string;
+  profile?: AuditLogProfile | null;
+}
+
+interface AuditPagination {
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+type AuditLogsResponse = Awaited<ReturnType<typeof apiFetch<AuditLogEntry[]>>> & {
+  pagination?: AuditPagination;
+};
+
 export default function AdminAuditLogsPage() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [search, setSearch] = useState("");
@@ -29,11 +53,11 @@ export default function AdminAuditLogsPage() {
     if (actionFilter) url += `&action=${actionFilter}`;
     if (resourceFilter) url += `&resourceType=${resourceFilter}`;
 
-    apiFetch(url).then(res => {
+    apiFetch<AuditLogEntry[]>(url).then((res: AuditLogsResponse) => {
       if (res.ok) {
-        setLogs(res.data);
-        setNextCursor(res.pagination.nextCursor);
-        setHasMore(res.pagination.hasMore);
+        setLogs(res.data ?? []);
+        setNextCursor(res.pagination?.nextCursor ?? null);
+        setHasMore(res.pagination?.hasMore ?? false);
       }
       setLoading(false);
     });
@@ -74,7 +98,7 @@ export default function AdminAuditLogsPage() {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const groups: { label: string, items: any[] }[] = [
+    const groups: { label: string, items: AuditLogEntry[] }[] = [
       { label: "Today", items: [] },
       { label: "Yesterday", items: [] },
       { label: "Earlier", items: [] }
@@ -82,9 +106,9 @@ export default function AdminAuditLogsPage() {
 
     logs.forEach(log => {
       const d = new Date(log.createdAt);
-      if (d >= today) groups[0].items.push(log);
-      else if (d >= yesterday) groups[1].items.push(log);
-      else groups[2].items.push(log);
+      if (d >= today) groups[0]!.items.push(log);
+      else if (d >= yesterday) groups[1]!.items.push(log);
+      else groups[2]!.items.push(log);
     });
 
     return groups.filter(g => g.items.length > 0);

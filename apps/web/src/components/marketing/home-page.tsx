@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import VariableProximity from "./VariableProximity";
 import TextType from "./TextType";
+import { MagnetizeButton } from "@/components/ui/magnetize-button";
 import {
   ArrowRight,
   BellRing,
@@ -60,6 +62,7 @@ const trustBadges = [
 
 export function HomePage() {
   const containerRef = useRef<HTMLHeadingElement>(null);
+  const router = useRouter();
 
   return (
     <main>
@@ -97,10 +100,11 @@ export function HomePage() {
               Skip the waiting room chaos. Book smarter, queue calmer, get seen faster — all from one place.
             </p>
             <div className="hero-actions">
-              <Link className="button button-primary button-large" href="/register">
-                Book now <ArrowRight size={18} />
-              </Link>
-              <Link className="text-link" href="/how-it-works">
+              <MagnetizeButton 
+                onClick={() => router.push('/register')} 
+                className="button button-large border-none"
+              />
+              <Link className="button button-outline button-large" href="/how-it-works">
                 See how it works <span aria-hidden="true">↗</span>
               </Link>
             </div>

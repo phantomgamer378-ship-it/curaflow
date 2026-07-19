@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { prisma } from "../../config/db";
+import { getClinicDayRange, getClinicSessionDateForDate } from "@clinic/queue";
 
 export async function getTodayAppointments(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
@@ -12,18 +13,12 @@ export async function getTodayAppointments(req: AuthenticatedRequest, res: Respo
       return res.status(404).json({ ok: false, error: "Doctor profile not found" });
     }
 
-    // Use a wide window: yesterday midnight to tomorrow midnight (UTC)
-    // This ensures appointments booked in IST (+5:30) that cross UTC midnight are always visible
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0); // local midnight today
-
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999); // local end of today
+    const today = getClinicDayRange();
 
     const appointments = await prisma.appointment.findMany({
       where: {
         doctorId: doctor.id,
-        slotTime: { gte: todayStart, lte: todayEnd },
+        slotTime: { gte: today.start, lte: today.end },
         status: { notIn: ["cancelled", "no_show"] },
       },
       include: {
@@ -92,8 +87,7 @@ export async function goOnline(req: AuthenticatedRequest, res: Response, next: N
       data: { isOnline: true, onlineSince: new Date() },
     });
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const todayDate = new Date(todayStr);
+    const todayDate = getClinicSessionDateForDate();
 
     let session = await prisma.queueSession.findFirst({
       where: { doctorId: doctor.id, sessionDate: todayDate }
@@ -131,8 +125,7 @@ export async function pauseQueue(req: AuthenticatedRequest, res: Response, next:
       return res.status(404).json({ ok: false, error: "Doctor profile not found" });
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const todayDate = new Date(todayStr);
+    const todayDate = getClinicSessionDateForDate();
 
     let session = await prisma.queueSession.findFirst({
       where: { doctorId: doctor.id, sessionDate: todayDate }
@@ -174,8 +167,7 @@ export async function goOffline(req: AuthenticatedRequest, res: Response, next: 
       data: { isOnline: false, onlineSince: null },
     });
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const todayDate = new Date(todayStr);
+    const todayDate = getClinicSessionDateForDate();
 
     let session = await prisma.queueSession.findFirst({
       where: { doctorId: doctor.id, sessionDate: todayDate }
