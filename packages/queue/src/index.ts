@@ -239,18 +239,18 @@ export async function skipPatient(appointmentId: string, doctorId: string, clini
     throw new Error("No active queue session for this doctor today.");
   }
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: any) => {
     const entries = await tx.queueEntry.findMany({
       where: { sessionId: session.id },
       orderBy: { position: "asc" }
     });
 
-    const skippedEntry = entries.find(e => e.appointmentId === appointmentId);
+    const skippedEntry = entries.find((e: any) => e.appointmentId === appointmentId);
     if (!skippedEntry) {
       throw new Error("Patient queue entry not found.");
     }
 
-    const otherEntries = entries.filter(e => e.appointmentId !== appointmentId);
+    const otherEntries = entries.filter((e: any) => e.appointmentId !== appointmentId);
 
     let pos = 1;
     for (const entry of otherEntries) {
