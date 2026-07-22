@@ -1,0 +1,3 @@
+# Allow pre-built bundle to be committed for Render deployment
+!dist/
+!dist/index.js
