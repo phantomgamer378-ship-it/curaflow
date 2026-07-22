@@ -8,7 +8,7 @@ export default defineConfig({
   splitting: false,
   sourcemap: false,
   clean: true,
-  // Bundle all workspace packages inline so Render doesn't need them
+  // Bundle all workspace packages AND AI packages inline
   noExternal: [
     "@clinic/ai",
     "@clinic/db",
@@ -16,8 +16,12 @@ export default defineConfig({
     "@clinic/queue",
     "@clinic/types",
     "@clinic/observability",
+    "@langchain/core",
+    "@langchain/langgraph",
+    "@langchain/openai",
+    "langchain",
   ],
-  // Keep native node modules external (they can't be bundled)
+  // Keep only native binary modules and true runtime deps external
   external: [
     "bcryptjs",
     "bullmq",
@@ -32,11 +36,6 @@ export default defineConfig({
     "zod",
     "google-auth-library",
     "@prisma/client",
-    "langchain",
-    "langraph",
-    "@langchain/openai",
-    "@langchain/core",
-    "@langchain/langgraph",
   ],
   esbuildOptions(options) {
     options.banner = {
