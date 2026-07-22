@@ -1,0 +1,269 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+model Profile {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  role         String        @default("patient")
+  name         String
+  phone        String?
+  avatarUrl    String?
+  emailVerifiedAt DateTime?
+  deletedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  
+  patient       Patient?
+  doctor        Doctor?
+  auditLogs     AuditLog[]
+  notifications Notification[]
+  emailTokens   EmailVerificationToken[]
+  resetTokens   PasswordResetToken[]
+
+  @@map("profiles")
+}
+
+model Clinic {
+  id           String          @id @default(uuid())
+  name         String
+  openTime              String          @default("09:00")
+  closeTime             String          @default("17:00")
+  gettingCloseThreshold Int             @default(3)
+  createdAt             DateTime        @default(now())
+  
+  doctors      Doctor[]
+  holidays     ClinicHoliday[]
+  appointments Appointment[]
+
+  @@map("clinics")
+}
+
+model Doctor {
+  id                  String               @id @default(uuid())
+  profileId           String               @unique
+  clinicId            String
+  specialty           String?
+  bio                 String?
+  qualifications      String?
+  yearsExperience     Int?
+  languages           String?
+  consultationFee     Int?
+  slotDurationMin     Int                  @default(15)
+  maxPatientsPerSlot  Int                  @default(1)
+  isOnline            Boolean              @default(false)
+  onlineSince         DateTime?
+  deletedAt           DateTime?
+  createdAt           DateTime             @default(now())
+
+  profile             Profile              @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  clinic              Clinic               @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  availabilities      DoctorAvailability[]
+  leaves              DoctorLeave[]
+  appointments        Appointment[]
+  queueSessions       QueueSession[]
+
+  @@map("doctors")
+}
+
+model DoctorAvailability {
+  id        String   @id @default(uuid())
+  doctorId  String
+  weekday   Int
+  startTime String
+  endTime   String
+
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, weekday, startTime])
+  @@map("doctor_availability")
+}
+
+model ClinicHoliday {
+  id       String   @id @default(uuid())
+  clinicId String
+  date     DateTime
+  reason   String?
+
+  clinic   Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, date])
+  @@map("clinic_holidays")
+}
+
+model DoctorLeave {
+  id       String   @id @default(uuid())
+  doctorId String
+  date     DateTime
+  reason   String?
+
+  doctor   Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, date])
+  @@map("doctor_leaves")
+}
+
+model Patient {
+  id        String   @id @default(uuid())
+  profileId String   @unique
+  dob                   DateTime?
+  gender                String?
+  bloodGroup            String?
+  allergies             String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  notes                 String?
+
+  profile      Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@map("patients")
+}
+
+model Appointment {
+  id        String   @id @default(uuid())
+  patientId String
+  doctorId  String
+  clinicId  String
+  slotTime  DateTime
+  status    String   @default("booked")
+  tokenNo   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient    Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor     Doctor             @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  clinic     Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  notes      ConsultationNotes?
+  queueEntry QueueEntry?
+
+  @@unique([doctorId, slotTime], map: "uniq_doctor_slot_active")
+  @@index([doctorId, slotTime])
+  @@index([patientId])
+  @@map("appointments")
+}
+
+model ConsultationNotes {
+  id            String   @id @default(uuid())
+  appointmentId String   @unique
+  doctorId      String
+  diagnosis     String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@map("consultation_notes")
+}
+
+model QueueSession {
+  id           String       @id @default(uuid())
+  doctorId     String
+  sessionDate  DateTime
+  currentToken Int          @default(0)
+  status       String       @default("not_started")
+
+  doctor       Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  entries      QueueEntry[]
+  events       QueueEvent[]
+
+  @@unique([doctorId, sessionDate])
+  @@map("queue_sessions")
+}
+
+model QueueEntry {
+  id            String   @id @default(uuid())
+  sessionId     String
+  appointmentId String   @unique
+  position      Int
+  status        String   @default("waiting")
+  joinedAt      DateTime @default(now())
+  checkedInAt   DateTime?
+
+  session       QueueSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, appointmentId])
+  @@map("queue_entries")
+}
+
+model QueueEvent {
+  id        String   @id @default(uuid())
+  sessionId String
+  type      String
+  payload   String   @default("{}")
+  createdAt DateTime @default(now())
+
+  session   QueueSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("queue_events")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  channel   String   @default("email")
+  payload   String   @default("{}")
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+
+  profile   Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorId      String?
+  actorRole    String?
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     String   @default("{}")
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  profile      Profile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@index([actorId])
+  @@index([action])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
+}
+
+model EmailVerificationToken {
+  id         String   @id @default(uuid())
+  profileId  String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String   @id @default(uuid())
+  profileId  String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
